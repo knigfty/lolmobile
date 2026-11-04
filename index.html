@@ -25,6 +25,8 @@ targets.push({group,visual,base,body,head,rubble,healthBar,green,maxHp:10,hp:10,
 const player=new THREE.Group();scene.add(player);let mixer,actions={},current='',lockUntil=0,hitCount=0;const clock=new THREE.Clock();const keys=new Set();let stickX=0,stickY=0,attackIndex=0,now=0;const stateEl=document.getElementById('state'),hitsEl=document.getElementById('hits');let toastTimeout,damageTimer=null;
 const moveKeys=new Set(['KeyA','KeyD','KeyW','KeyS','ArrowLeft','ArrowRight','ArrowUp','ArrowDown']);
 const ATTACK_HOLD_MS=250;
+const ATTACK_BLEND_TIME=.12;
+let animationBlend=null,attackIdleBlend=false;
 const ATTACK_DURATION=1.5,ATTACK_SHORT_DURATION=.75,ATTACK_HIT_PHASE=.1755;
 const PLAYER_RADIUS=.4,ARENA_RADIUS=10.9;
 let dancing=false,activeAttackName='',attackStartedAt=0,attackUntil=0,pendingAttackCommand=null;
@@ -196,9 +198,20 @@ function queueAttackCommand(command){
   return true;
 }
 function updateAttack(){
-  if(!activeAttackName||inputTime()<attackUntil)return;
-  actions[activeAttackName].stop();activeAttackName='';current='';lockUntil=0;
-  play(movementInput().moving?'Run_Base':'Idle1_Base',0);
+  if(!activeAttackName)return;
+  if(!movementInput().moving&&!pendingAttackCommand&&!attackIdleBlend&&inputTime()>=attackUntil-ATTACK_BLEND_TIME){
+    const name=current,label=stateEl.textContent;
+    play('Idle1_Base',ATTACK_BLEND_TIME);
+    current=name;stateEl.textContent=label;attackIdleBlend=true;
+  }
+  if(inputTime()<attackUntil)return;
+  updateAnimationBlend();
+  const outgoing=actions[activeAttackName];
+  outgoing.time=Math.min(outgoing.getClip().duration,Math.max(0,inputTime()-attackStartedAt)*outgoing.getEffectiveTimeScale());
+  outgoing.paused=true;
+  activeAttackName='';lockUntil=0;
+  if(attackIdleBlend){current='Idle1_Base';stateEl.textContent='Idle';attackIdleBlend=false}
+  else play(movementInput().moving?'Run_Base':'Idle1_Base',movementInput().moving?0:ATTACK_BLEND_TIME);
   const command=pendingAttackCommand;pendingAttackCommand=null;
   if(command?.type==='attack')requestBaseAttack(command.name);
   else if(command==='spin')spin();else if(command==='dance')dance();
@@ -233,7 +246,34 @@ function endAttack(cancelled=false){
   if(tap)attack();
 }
 function toast(msg){const el=document.getElementById('message');el.textContent=msg;el.style.opacity='1';clearTimeout(toastTimeout);toastTimeout=setTimeout(()=>el.style.opacity='0',750)}
-function play(name,fade=.18,once=false){if(!actions[name]||current===name)return;const old=actions[current],next=actions[name];if(old){if(fade>0)old.fadeOut(fade);else old.stop()}next.reset().fadeIn(fade).play();next.setLoop(once?THREE.LoopOnce:THREE.LoopRepeat,once?1:Infinity);next.clampWhenFinished=once;current=name;stateEl.textContent=isSpinAnimation(name)?`Spin (${name})`:name.replace(/_Base|Garen_2013_/g,'').replace('Spell3_0','Spin').replace('Attack1','Attack').replace('Idle1','Idle').replace('Run','Running').replace('Running_Spell1','Run Spell1')}
+function updateAnimationBlend(){
+  if(!animationBlend)return;
+  const {sources,next,start}=animationBlend;
+  const progress=Math.max(0,Math.min(1,(inputTime()-start)/ATTACK_BLEND_TIME));
+  for(const [action,weight] of sources)action.setEffectiveWeight(weight*(1-progress));
+  next.setEffectiveWeight(progress);
+  if(progress>=1){for(const [action] of sources)action.stop();animationBlend=null}
+}
+function play(name,fade=.18,once=false){
+  if(!actions[name]||current===name)return;
+  const old=actions[current],next=actions[name];
+  const isAttack=n=>n==='Attack1'||n==='Attack2';
+  const scoped=old&&((isAttack(current)&&(name==='Idle1_Base'||isAttack(name)))||(current==='Idle1_Base'&&isAttack(name)));
+  if(scoped){
+    updateAnimationBlend();
+    const sources=Object.values(actions).filter(a=>a!==next&&a.isScheduled()&&a.getEffectiveWeight()>0).map(a=>[a,a.getEffectiveWeight()]);
+    const total=sources.reduce((sum,[,weight])=>sum+weight,0)||1;
+    for(const pair of sources){pair[1]/=total;pair[0].stopFading().setEffectiveWeight(pair[1])}
+    next.reset().stopFading().setEffectiveWeight(0).play();next.enabled=true;
+    animationBlend={sources,next,start:inputTime()};
+  }else{
+    if(animationBlend){for(const [a] of animationBlend.sources)if(a!==old)a.stop();animationBlend=null}
+    if(old){if(fade>0)old.fadeOut(fade);else old.stop()}
+    next.reset().setEffectiveWeight(1).fadeIn(fade).play();
+  }
+  next.setLoop(once?THREE.LoopOnce:THREE.LoopRepeat,once?1:Infinity);next.clampWhenFinished=once;current=name;
+  stateEl.textContent=isSpinAnimation(name)?`Spin (${name})`:name.replace(/_Base|Garen_2013_/g,'').replace('Spell3_0','Spin').replace('Attack1','Attack').replace('Idle1','Idle').replace('Run','Running').replace('Running_Spell1','Run Spell1')
+}
 // Held movement waits for half an attack; a fresh move interrupts immediately.
 // Dances still yield to any movement, and spins allow movement throughout.
 function cancelActionForMovement(newCommand=false){
@@ -242,7 +282,7 @@ function cancelActionForMovement(newCommand=false){
     if(!newCommand)return;
     activeAttackName='';pendingAttackCommand=null;attackUntil=0;lockUntil=0;
     clearTimeout(damageTimer);damageTimer=null;
-    mixer.stopAllAction();current='';play('Run_Base',0);
+    animationBlend=null;mixer.stopAllAction();current='';play('Run_Base',0);
     return;
   }
   if(now>=lockUntil||isSpinAnimation(current))return;
@@ -260,6 +300,7 @@ function action(name,duration,damage){
   lockUntil=now+(name.startsWith('Attack')?actions[name].getClip().duration:duration);
   play(name,.12,true);
   if(name.startsWith('Attack')){
+    attackIdleBlend=false;
     attackIndex=name==='Attack1'?1:0;
     activeAttackName=name;attackStartedAt=inputTime();attackUntil=attackStartedAt+ATTACK_DURATION;attackReadyAt=attackStartedAt+ATTACK_DURATION;actions[name].setEffectiveTimeScale(actions[name].getClip().duration/ATTACK_DURATION);lockUntil=Infinity;pendingAttackCommand=null;
     if(movementInput().moving)queueAttackCommand('move');
@@ -345,6 +386,7 @@ function animate(){
   }else if(now>=lockUntil&&!spell1Target)play('Idle1_Base');
   updateTargets();
   if(mixer){
+    updateAnimationBlend();
     mixer.update(dt);
     // Mobile frame gaps must not stretch recovery or the three-second spin.
     if(activeAttackName||activeSpinName){
