@@ -22,7 +22,7 @@ const PLAYER_RADIUS=.4,ARENA_RADIUS=10.9;
 let dancing=false;
 let attackHoldTimer=null,attackHolding=false,attackWasHold=false,attackPointerId=null;
 let runSpellUntil=0,runSpellReadyAt=0,runSpellArmed=false;
-let spell1Target=null,spell1Until=0,spell1HitAt=0,spell1Hit=false;
+let spell1Target=null,spell1Until=0,spell1HitAt=0,spell1Hit=false,spell1StartedAt=0,pendingSpellCommand=null;
 const SPELL1_RANGE=3,SPELL1_CONE_COS=Math.cos(Math.PI/4);
 const inputTime=()=>performance.now()/1000;
 const runSpellActive=()=>runSpellArmed&&inputTime()<runSpellUntil;
@@ -81,6 +81,23 @@ function damageTarget(t){
   toast(t.hp<=0?'TARGET DOWN!':'HIT!');
   if(t.hp<=0){t.group.visible=false;t.cool=now+4}
 }
+function spell1SpeedMultiplier(){
+  if(!spell1Target)return 1;
+  const progress=Math.max(0,Math.min(1,(inputTime()-spell1StartedAt)/(spell1Until-spell1StartedAt)));
+  return 1-.8*progress;
+}
+function queueSpellCommand(command){
+  if(!spell1Target)return false;
+  pendingSpellCommand=command;
+  // A late command finishes immediately rather than backdating the cooldown.
+  const earlyEnd=spell1StartedAt+actions.Spell1.getClip().duration-.1;
+  spell1Until=Math.min(spell1Until,Math.max(inputTime(),earlyEnd));
+  return true;
+}
+function cancelDance(){
+  if(!dancing)return;
+  dancing=false;lockUntil=0;mixer.stopAllAction();current='';play('Idle1_Base',0);
+}
 function updateRunSpell(){
   const time=inputTime();
   if(spell1Target){
@@ -88,7 +105,13 @@ function updateRunSpell(){
       spell1Hit=true;
       if(player.position.distanceTo(spell1Target.group.position)<=SPELL1_RANGE)damageTarget(spell1Target);
     }
-    if(time>=spell1Until){spell1Target=null;endRunSpell(spell1Until)}
+    if(time>=spell1Until){
+      spell1Target=null;endRunSpell(spell1Until);
+      actions.Spell1.stop();current='';
+      play(movementInput().moving?'Run_Base':'Idle1_Base',0);
+      const command=pendingSpellCommand;pendingSpellCommand=null;
+      if(command==='attack')attack();else if(command==='spin')spin();else if(command==='dance')dance();
+    }
     return;
   }
   if(!runSpellArmed)return;
@@ -106,13 +129,18 @@ function updateRunSpell(){
   if(!nearest)return;
   spell1Target=nearest;
   const duration=actions.Spell1.getClip().duration;
-  spell1Until=time+duration;spell1HitAt=time+duration*.45;spell1Hit=false;
+  spell1StartedAt=time;spell1Until=time+duration;spell1HitAt=time+duration*.45;spell1Hit=false;
+  pendingSpellCommand=null;
+  if(movementInput().moving)queueSpellCommand('move');
+  else if(attackHolding)queueSpellCommand('attack');
   player.rotation.y=Math.atan2(nearest.group.position.x-player.position.x,nearest.group.position.z-player.position.z);
   play('Spell1',.08,true);
 }
 function beginAttack(){
   if(attackHolding)return;
+  cancelDance();
   attackHolding=true;attackWasHold=false;
+  if(queueSpellCommand('attack')){attackWasHold=true;return}
   if(!movementInput().moving){attackWasHold=true;attack();return}
   attackHoldTimer=setTimeout(()=>{
     attackHoldTimer=null;
@@ -132,7 +160,8 @@ function play(name,fade=.18,once=false){if(!actions[name]||current===name)return
 // A fresh movement command cancels an attack; held input waits for it to finish.
 // Dances still yield to any movement, and spins allow movement throughout.
 function cancelActionForMovement(newCommand=false){
-  if(now>=lockUntil||current==='Spell3_0'||spell1Target)return;
+  if(spell1Target){if(newCommand)queueSpellCommand('move');return}
+  if(now>=lockUntil||current==='Spell3_0')return;
   if(current.startsWith('Attack')&&!newCommand)return;
   lockUntil=0;dancing=false;
   clearTimeout(damageTimer);
@@ -142,6 +171,7 @@ function cancelActionForMovement(newCommand=false){
   play('Run_Base',0);
 }
 function action(name,duration,damage){
+  cancelDance();
   if(!mixer||now<lockUntil||runSpellActive()||spell1Target)return;
   lockUntil=now+(name.startsWith('Attack')?actions[name].getClip().duration:duration);
   play(name,.12,true);
@@ -163,7 +193,10 @@ function action(name,duration,damage){
     },duration*450);
   }
 }
-function attack(){attackIndex=1-attackIndex;action(attackIndex?'Attack1':'Attack2',.78,true)}function spin(){action('Spell3_0',1.35,true)}function dance(){
+function attack(){if(queueSpellCommand('attack'))return;attackIndex=1-attackIndex;action(attackIndex?'Attack1':'Attack2',.78,true)}
+function spin(){if(queueSpellCommand('spin'))return;action('Spell3_0',1.35,true)}
+function dance(){
+  if(queueSpellCommand('dance'))return;
   if(!mixer||now<lockUntil||runSpellActive()||spell1Target)return;
   dancing=true;lockUntil=Infinity;play('Dance_Base',.2,true);
 }
@@ -194,7 +227,7 @@ function animate(){
   if(moving)cancelActionForMovement();
   if(moving&&(now>=lockUntil||current==='Spell3_0')){
     x/=Math.max(1,len);y/=Math.max(1,len);
-    const speed=4.5*(inputTime()<runSpellUntil?1.35:1)*(spell1Target ? .1 : 1);
+    const speed=4.5*(inputTime()<runSpellUntil?1.35:1)*spell1SpeedMultiplier();
     movePlayer(x*speed*dt,y*speed*dt);
     // The model faces local +Z; screen right/down map to world +X/+Z.
     const desired=Math.atan2(x,y);
