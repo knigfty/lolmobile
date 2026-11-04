@@ -1,10 +1,10 @@
 <!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"><meta name="theme-color" content="#101d23"><title>Garen — Arena Test</title>
 <style>
-*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#101d23;color:#fff;font-family:system-ui,-apple-system,Segoe UI,sans-serif;touch-action:none;user-select:none}canvas{display:block;touch-action:none}#ui{position:fixed;inset:0;pointer-events:none}#top{position:absolute;top:env(safe-area-inset-top,0px);left:0;right:0;display:flex;justify-content:space-between;align-items:flex-start;padding:15px 17px;gap:12px}#brand{font-size:12px;letter-spacing:2px;color:#f7d78a;font-weight:800}#title{font-size:21px;font-weight:900;line-height:1.15;margin-top:3px;text-shadow:0 2px 8px #0009}#sub{font-size:11px;color:#d5e5e2;margin-top:5px}#stats{text-align:right;background:#102027b8;border:1px solid #b6d5c02d;border-radius:12px;padding:9px 12px;font-size:12px;line-height:1.65}#stats strong{color:#ffe3a0}#message{position:absolute;top:23%;left:50%;transform:translateX(-50%);font-size:15px;font-weight:800;color:#ffdfa0;text-shadow:0 2px 7px #000;opacity:0;transition:opacity .18s;white-space:nowrap}#bottom{position:absolute;bottom:calc(24px + env(safe-area-inset-bottom,0px));left:0;right:0;display:flex;align-items:flex-end;justify-content:space-between;padding:0 22px;gap:20px}#joystick{pointer-events:auto;width:136px;height:136px;border-radius:50%;background:#e5f4e010;border:2px solid #e7f6e34d;position:relative;box-shadow:inset 0 0 28px #d8f6e00b}#stick{position:absolute;left:50%;top:50%;width:62px;height:62px;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle at 30% 25%,#b6e8ca80,#4b847c80);border:2px solid #e2fff0aa;box-shadow:0 5px 15px #0006}#buttons{display:grid;grid-template-columns:repeat(2,68px);gap:10px;pointer-events:auto;align-items:end}.action{width:68px;height:68px;border-radius:50%;border:2px solid #f7e0a2a0;background:radial-gradient(circle at 35% 25%,#9d774d,#403525);color:#fff5d7;font-weight:900;font-size:12px;box-shadow:0 5px 18px #0008;touch-action:none}.action:active,.action.active{filter:brightness(1.5);transform:scale(.95)}#attack{width:82px;height:82px;grid-row:1/3;grid-column:2;background:radial-gradient(circle at 30% 20%,#e4b56b,#8b4a2e);font-size:15px}#dance{grid-column:1;grid-row:2;background:radial-gradient(circle at 30% 20%,#528d8a,#26494e);border-color:#8ed3c5}#help{position:absolute;bottom:5px;left:50%;transform:translateX(-50%);font-size:10px;color:#e5eee9aa;white-space:nowrap}#loading{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:15px;background:linear-gradient(145deg,#0e1e24,#263b35);z-index:10;text-align:center;padding:20px}#loading h1{margin:0;color:#ffe1a0;letter-spacing:2px}#loading p{margin:0;color:#cbdcd5;font-size:13px}#loading .spin{width:34px;height:34px;border:3px solid #fff3;border-top-color:#ffda89;border-radius:50%;animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}@media(max-width:370px){#joystick{width:116px;height:116px}#bottom{padding:0 12px}#buttons{grid-template-columns:repeat(2,61px)}.action{width:61px;height:61px}#attack{width:74px;height:74px}}@media(min-width:800px){#bottom{max-width:950px;margin:auto}#help{font-size:12px}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#101d23;color:#fff;font-family:system-ui,-apple-system,Segoe UI,sans-serif;touch-action:none;user-select:none}canvas{display:block;touch-action:none}#ui{position:fixed;inset:0;pointer-events:none}#top{position:absolute;top:env(safe-area-inset-top,0px);left:0;right:0;display:flex;justify-content:space-between;align-items:flex-start;padding:15px 17px;gap:12px}#brand{font-size:12px;letter-spacing:2px;color:#f7d78a;font-weight:800}#title{font-size:21px;font-weight:900;line-height:1.15;margin-top:3px;text-shadow:0 2px 8px #0009}#sub{font-size:11px;color:#d5e5e2;margin-top:5px}#stats{text-align:right;background:#102027b8;border:1px solid #b6d5c02d;border-radius:12px;padding:9px 12px;font-size:12px;line-height:1.65}#stats strong{color:#ffe3a0}#message{position:absolute;top:23%;left:50%;transform:translateX(-50%);font-size:15px;font-weight:800;color:#ffdfa0;text-shadow:0 2px 7px #000;opacity:0;transition:opacity .18s;white-space:nowrap}#bottom{position:absolute;bottom:calc(24px + env(safe-area-inset-bottom,0px));left:0;right:0;display:flex;align-items:flex-end;justify-content:space-between;padding:0 22px;gap:20px}#joystick{pointer-events:auto;width:136px;height:136px;border-radius:50%;background:#e5f4e010;border:2px solid #e7f6e34d;position:relative;box-shadow:inset 0 0 28px #d8f6e00b}#stick{position:absolute;left:50%;top:50%;width:62px;height:62px;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle at 30% 25%,#b6e8ca80,#4b847c80);border:2px solid #e2fff0aa;box-shadow:0 5px 15px #0006}#buttons{display:grid;grid-template-columns:repeat(2,68px);gap:10px;pointer-events:auto;align-items:end}.action{width:68px;height:68px;border-radius:50%;border:2px solid #f7e0a2a0;background:radial-gradient(circle at 35% 25%,#9d774d,#403525);color:#fff5d7;font-weight:900;font-size:12px;box-shadow:0 5px 18px #0008;touch-action:none}.action:active,.action.active{filter:brightness(1.5);transform:scale(.95)}#attack{width:82px;height:82px;grid-row:2/4;grid-column:2;background:radial-gradient(circle at 30% 20%,#e4b56b,#8b4a2e);font-size:15px}#justice{grid-column:2;grid-row:1;font-size:10px;background:radial-gradient(circle at 30% 20%,#d1be70,#63552a)}#dance{grid-column:1;grid-row:2;background:radial-gradient(circle at 30% 20%,#528d8a,#26494e);border-color:#8ed3c5}#help{position:absolute;bottom:5px;left:50%;transform:translateX(-50%);font-size:10px;color:#e5eee9aa;white-space:nowrap}#loading{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:15px;background:linear-gradient(145deg,#0e1e24,#263b35);z-index:10;text-align:center;padding:20px}#loading h1{margin:0;color:#ffe1a0;letter-spacing:2px}#loading p{margin:0;color:#cbdcd5;font-size:13px}#loading .spin{width:34px;height:34px;border:3px solid #fff3;border-top-color:#ffda89;border-radius:50%;animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}@media(max-width:370px){#joystick{width:116px;height:116px}#bottom{padding:0 12px}#buttons{grid-template-columns:repeat(2,61px)}.action{width:61px;height:61px}#attack{width:74px;height:74px}}@media(min-width:800px){#bottom{max-width:950px;margin:auto}#help{font-size:12px}}
 </style>
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"}}</script></head><body>
 <div id="loading"><div class="spin"></div><h1>GAREN ARENA</h1><p id="loadText">Preparing your character...</p></div>
-<div id="ui"><div id="top"><div><div id="brand">3D PLAYGROUND</div><div id="title">GAREN <span style="color:#ffe0a2">ARENA</span></div><div id="sub">Movement & animation test</div></div><div id="stats">Targets hit: <strong id="hits">0</strong><br>Action: <strong id="state">Idle</strong></div></div><div id="message"></div><div id="bottom"><div id="joystick"><div id="stick"></div></div><div id="buttons"><button class="action" id="skill">SPIN</button><button class="action" id="attack">ATTACK</button><button class="action" id="dance">DANCE</button></div></div><div id="help">Desktop: WASD / arrows · Space attack · E spin · R dance</div></div>
+<div id="ui"><div id="top"><div><div id="brand">3D PLAYGROUND</div><div id="title">GAREN <span style="color:#ffe0a2">ARENA</span></div><div id="sub">Movement & animation test</div></div><div id="stats">Targets hit: <strong id="hits">0</strong><br>Action: <strong id="state">Idle</strong></div></div><div id="message"></div><div id="bottom"><div id="joystick"><div id="stick"></div></div><div id="buttons"><button class="action" id="skill">SPIN</button><button class="action" id="justice">JUSTICE</button><button class="action" id="attack">ATTACK</button><button class="action" id="dance">DANCE</button></div></div><div id="help">Desktop: WASD / arrows · Space attack · E spin · R dance</div></div>
 <script type="module">
 import * as THREE from 'three';import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 const scene=new THREE.Scene();scene.background=new THREE.Color(0x9ab6b4);scene.fog=new THREE.Fog(0x9ab6b4,19,42);
@@ -25,6 +25,7 @@ targets.push({group,visual,base,body,head,rubble,healthBar,green,maxHp:10,hp:10,
 const player=new THREE.Group();scene.add(player);let mixer,actions={},current='',lockUntil=0,hitCount=0;const clock=new THREE.Clock();const keys=new Set();let stickX=0,stickY=0,attackIndex=0,now=0;const stateEl=document.getElementById('state'),hitsEl=document.getElementById('hits');let toastTimeout,damageTimer=null;
 const moveKeys=new Set(['KeyA','KeyD','KeyW','KeyS','ArrowLeft','ArrowRight','ArrowUp','ArrowDown']);
 const ATTACK_HOLD_MS=250;
+const BASE_ATTACK_CONE_COS=Math.cos(135*Math.PI/360),JUSTICE_RANGE=800;
 const ATTACK_BLEND_TIME=.12;
 let animationBlend=null,attackIdleBlend=false;
 const ATTACK_DURATION=1.5,ATTACK_SHORT_DURATION=.75,ATTACK_HIT_PHASE=.1755;
@@ -164,7 +165,7 @@ function updateRunSpell(){
       actions.Spell1.stop();current='';
       play(movementInput().moving?'Run_Base':'Idle1_Base',0);
       const command=pendingSpellCommand;pendingSpellCommand=null;
-      if(command==='attack')attack();else if(command==='spin')spin();else if(command==='dance')dance();
+      if(command==='attack')attack();else if(command==='spin')spin();else if(command==='dance')dance();else if(command==='justice')justice();
     }
     return;
   }
@@ -221,7 +222,7 @@ function updateAttack(){
   else play(movementInput().moving?'Run_Base':'Idle1_Base',movementInput().moving?0:ATTACK_BLEND_TIME);
   const command=pendingAttackCommand;pendingAttackCommand=null;
   if(command?.type==='attack')requestBaseAttack(command.name);
-  else if(command==='spin')spin();else if(command==='dance')dance();
+  else if(command==='spin')spin();else if(command==='dance')dance();else if(command==='justice')justice();
 }
 function requestBaseAttack(){
   if(activeAttackName||inputTime()<attackReadyAt)return;
@@ -296,7 +297,7 @@ function cancelActionForMovement(newCommand=false){
     animationBlend=null;mixer.stopAllAction();current='';play('Run_Base',0);
     return;
   }
-  if(now>=lockUntil||isSpinAnimation(current))return;
+  if(now>=lockUntil||isSpinAnimation(current)||current==='Spell4_Base')return;
   if(current.startsWith('Attack')&&!newCommand)return;
   lockUntil=0;dancing=false;
   clearTimeout(damageTimer);
@@ -327,7 +328,7 @@ function action(name,duration,damage){
         const dx=t.group.position.x-player.position.x,dz=t.group.position.z-player.position.z;
         const distance=Math.hypot(dx,dz);
         if(spinning)return distance<=3;
-        const facing=distance<.01||(dx*forward.x+dz*forward.z)/distance>.15;
+        const facing=distance<.01||(dx*forward.x+dz*forward.z)/distance>=BASE_ATTACK_CONE_COS;
         return distance<2.45&&facing;
       });
       for(const t of hits)damageTarget(t);
@@ -343,6 +344,23 @@ function attack(){
   if(inputTime()<attackReadyAt){attackRequested=true;return}
   if(queueSpellCommand('attack'))return;
   requestBaseAttack();
+}
+function justice(){
+  attackRequested=false;
+  if(queueSpellCommand('justice')||queueAttackCommand('justice'))return;
+  if(!mixer||(now<lockUntil&&!dancing)||runSpellActive())return;
+  const forward=new THREE.Vector3(0,0,1).applyQuaternion(player.quaternion);
+  let nearest=null,best=Infinity;
+  for(const t of targets){
+    if(t.hp<=0||!t.group.visible)continue;
+    const dx=t.group.position.x-player.position.x,dz=t.group.position.z-player.position.z,distance=Math.hypot(dx,dz);
+    if(distance>JUSTICE_RANGE||distance>=best)continue;
+    if(distance>1e-6&&(dx*forward.x+dz*forward.z)/distance<BASE_ATTACK_CONE_COS)continue;
+    nearest=t;best=distance;
+  }
+  if(!nearest){toast('NO TARGET IN FRONT');return}
+  player.rotation.y=Math.atan2(nearest.group.position.x-player.position.x,nearest.group.position.z-player.position.z);
+  action('Spell4_Base',actions.Spell4_Base.getClip().duration,false);
 }
 function spin(){
   attackRequested=false;
@@ -371,6 +389,7 @@ function releaseAttack(e){if(e.pointerId!==attackPointerId)return;attackPointerI
 attackButton.addEventListener('pointerup',releaseAttack);
 attackButton.addEventListener('pointercancel',releaseAttack);
 attackButton.addEventListener('lostpointercapture',releaseAttack);
+document.getElementById('justice').addEventListener('pointerdown',e=>{e.preventDefault();justice()});
 document.getElementById('skill').addEventListener('pointerdown',e=>{e.preventDefault();spin()});document.getElementById('dance').addEventListener('pointerdown',e=>{e.preventDefault();dance()});
 const joy=document.getElementById('joystick'),stick=document.getElementById('stick');let pointerId=null;function updateStick(e){const r=joy.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,max=r.width*.32;let x=(e.clientX-cx)/max,y=(e.clientY-cy)/max;const l=Math.hypot(x,y);if(l>1){x/=l;y/=l}const newCommand=stickX===0&&stickY===0&&l>0;stickX=x;stickY=y;if(l>0)cancelActionForMovement(newCommand);stick.style.transform=`translate(calc(-50% + ${x*max}px),calc(-50% + ${y*max}px))`}
 joy.addEventListener('pointerdown',e=>{e.preventDefault();pointerId=e.pointerId;joy.setPointerCapture(pointerId);updateStick(e)});joy.addEventListener('pointermove',e=>{if(e.pointerId===pointerId)updateStick(e)});function resetStick(e){if(e.pointerId!==pointerId)return;pointerId=null;stickX=stickY=0;stick.style.transform='translate(-50%,-50%)'}joy.addEventListener('pointerup',resetStick);joy.addEventListener('pointercancel',resetStick);
