@@ -14,10 +14,12 @@ const ground=new THREE.Mesh(new THREE.PlaneGeometry(34,34),new THREE.MeshStandar
 const ring=new THREE.Mesh(new THREE.RingGeometry(11.65,11.85,80),new THREE.MeshBasicMaterial({color:0xd2c08d,side:THREE.DoubleSide,transparent:true,opacity:.75}));ring.rotation.x=-Math.PI/2;ring.position.y=.012;scene.add(ring);
 const lineMat=new THREE.MeshBasicMaterial({color:0xd8d2a3,transparent:true,opacity:.18});for(let r of [4,8]){const g=new THREE.RingGeometry(r-.035,r+.035,80);const m=new THREE.Mesh(g,lineMat);m.rotation.x=-Math.PI/2;m.position.y=.016;scene.add(m)}
 function box(x,z,w,h,d,color){const mesh=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),new THREE.MeshStandardMaterial({color,roughness:.9}));mesh.position.set(x,h/2,z);mesh.castShadow=true;mesh.receiveShadow=true;scene.add(mesh);return mesh}for(let i=0;i<12;i++){const a=i*Math.PI/6;const r=13.7;box(Math.sin(a)*r,Math.cos(a)*r,1.5,.8+(i%3)*.35,1.5,i%2?0x677b70:0x8b8f79)}
-const targetMat=new THREE.MeshStandardMaterial({color:0xc17c58,roughness:.7,metalness:.12});const targets=[];for(const [x,z] of [[4,-3],[-4,-4],[5,5],[-5,4],[0,-7]]){const group=new THREE.Group();group.position.set(x,0,z);const base=new THREE.Mesh(new THREE.CylinderGeometry(.65,.8,.3,10),new THREE.MeshStandardMaterial({color:0x554f43}));base.position.y=.15;group.add(base);const body=new THREE.Mesh(new THREE.CylinderGeometry(.38,.46,1.2,10),targetMat.clone());body.position.y=1.03;body.castShadow=true;group.add(body);const head=new THREE.Mesh(new THREE.SphereGeometry(.35,12,8),targetMat.clone());head.position.y=1.85;head.castShadow=true;group.add(head);scene.add(group);targets.push({group,body,head,hp:3,cool:0})}
+const targetMat=new THREE.MeshStandardMaterial({color:0xc17c58,roughness:.7,metalness:.12});const targets=[];for(const [x,z] of [[4,-3],[-4,-4],[5,5],[-5,4],[0,-7]]){const group=new THREE.Group();group.position.set(x,0,z);const base=new THREE.Mesh(new THREE.CylinderGeometry(.65,.8,.3,10),new THREE.MeshStandardMaterial({color:0x554f43}));base.position.y=.15;group.add(base);const body=new THREE.Mesh(new THREE.CylinderGeometry(.38,.46,1.2,10),targetMat.clone());body.position.y=1.03;body.castShadow=true;group.add(body);const head=new THREE.Mesh(new THREE.SphereGeometry(.35,12,8),targetMat.clone());head.position.y=1.85;head.castShadow=true;group.add(head);scene.add(group);targets.push({group,body,head,hp:3,cool:0,hitboxRadius:.8})}
 const player=new THREE.Group();scene.add(player);let mixer,actions={},current='',lockUntil=0,hitCount=0;const clock=new THREE.Clock();const keys=new Set();let stickX=0,stickY=0,attackIndex=0,now=0;const stateEl=document.getElementById('state'),hitsEl=document.getElementById('hits');let toastTimeout,damageTimer=null;
 const moveKeys=new Set(['KeyA','KeyD','KeyW','KeyS','ArrowLeft','ArrowRight','ArrowUp','ArrowDown']);
 const ATTACK_HOLD_MS=250;
+const PLAYER_RADIUS=.4,ARENA_RADIUS=10.9;
+let dancing=false;
 let attackHoldTimer=null,attackHolding=false,attackWasHold=false,attackPointerId=null;
 let runSpellUntil=0,runSpellReadyAt=0,runSpellArmed=false;
 let spell1Target=null,spell1Until=0,spell1HitAt=0,spell1Hit=false;
@@ -31,6 +33,32 @@ function movementInput(){
   if(keys.has('KeyW')||keys.has('ArrowUp'))y-=1;
   if(keys.has('KeyS')||keys.has('ArrowDown'))y+=1;
   return {x,y,moving:Math.hypot(x,y)>.14};
+}
+// Circle colliders include each dummy's widest base and the champion's body.
+// Small movement steps prevent tunnelling; projection permits sliding along edges.
+function overlapsTarget(position,t){
+  return Math.hypot(position.x-t.group.position.x,position.z-t.group.position.z)<PLAYER_RADIUS+t.hitboxRadius-1e-7;
+}
+function movePlayer(dx,dz){
+  const steps=Math.max(1,Math.ceil(Math.hypot(dx,dz)/(PLAYER_RADIUS*.5)));
+  for(let step=0;step<steps;step++){
+    const previous=player.position.clone();
+    player.position.x+=dx/steps;player.position.z+=dz/steps;
+    for(let pass=0;pass<8;pass++){
+      const radius=Math.hypot(player.position.x,player.position.z);
+      if(radius>ARENA_RADIUS){player.position.x*=ARENA_RADIUS/radius;player.position.z*=ARENA_RADIUS/radius}
+      for(const t of targets){
+        if(t.hp<=0||!t.group.visible||!overlapsTarget(player.position,t))continue;
+        let nx=player.position.x-t.group.position.x,nz=player.position.z-t.group.position.z;
+        let distance=Math.hypot(nx,nz);
+        if(distance<1e-8){nx=-dx||1;nz=-dz;distance=Math.hypot(nx,nz)}
+        const separation=PLAYER_RADIUS+t.hitboxRadius;
+        player.position.x=t.group.position.x+nx/distance*separation;
+        player.position.z=t.group.position.z+nz/distance*separation;
+      }
+    }
+    if(Math.hypot(player.position.x,player.position.z)>ARENA_RADIUS+1e-7||targets.some(t=>t.hp>0&&t.group.visible&&overlapsTarget(player.position,t)))player.position.copy(previous);
+  }
 }
 function startRunSpell(){
   const time=inputTime();
@@ -106,7 +134,7 @@ function play(name,fade=.18,once=false){if(!actions[name]||current===name)return
 function cancelActionForMovement(newCommand=false){
   if(now>=lockUntil||current==='Spell3_0'||spell1Target)return;
   if(current.startsWith('Attack')&&!newCommand)return;
-  lockUntil=0;
+  lockUntil=0;dancing=false;
   clearTimeout(damageTimer);
   damageTimer=null;
   mixer.stopAllAction();
@@ -114,7 +142,10 @@ function cancelActionForMovement(newCommand=false){
   play('Run_Base',0);
 }
 function action(name,duration,damage){if(!mixer||now<lockUntil||runSpellActive()||spell1Target)return;lockUntil=now+(name.startsWith('Attack')?actions[name].getClip().duration:duration);play(name,.12,true);if(damage){damageTimer=setTimeout(()=>{damageTimer=null;for(const t of targets){if(t.hp<=0)continue;const dx=t.group.position.x-player.position.x,dz=t.group.position.z-player.position.z,dist=Math.hypot(dx,dz);const forward=new THREE.Vector3(0,0,1).applyQuaternion(player.quaternion);const facing=dist<.01||((dx*forward.x+dz*forward.z)/dist)>.15;if(dist<(name.startsWith('Spell3')?3.15:2.45)&&facing){damageTarget(t)}}},duration*450)}}
-function attack(){attackIndex=1-attackIndex;action(attackIndex?'Attack1':'Attack2',.78,true)}function spin(){action('Spell3_0',1.35,true)}function dance(){action(actions['Dance_Loop_BASE']?'Dance_Loop_BASE':'Dance_Base',2.6,false)}
+function attack(){attackIndex=1-attackIndex;action(attackIndex?'Attack1':'Attack2',.78,true)}function spin(){action('Spell3_0',1.35,true)}function dance(){
+  if(!mixer||now<lockUntil||runSpellActive()||spell1Target)return;
+  dancing=true;lockUntil=Infinity;play('Dance_Base',.2,true);
+}
 const attackButton=document.getElementById('attack');
 attackButton.addEventListener('pointerdown',e=>{
   e.preventDefault();if(attackPointerId!==null)return;
@@ -128,7 +159,9 @@ document.getElementById('skill').addEventListener('pointerdown',e=>{e.preventDef
 const joy=document.getElementById('joystick'),stick=document.getElementById('stick');let pointerId=null;function updateStick(e){const r=joy.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,max=r.width*.32;let x=(e.clientX-cx)/max,y=(e.clientY-cy)/max;const l=Math.hypot(x,y);if(l>1){x/=l;y/=l}const newCommand=stickX===0&&stickY===0&&l>0;stickX=x;stickY=y;if(l>0)cancelActionForMovement(newCommand);stick.style.transform=`translate(calc(-50% + ${x*max}px),calc(-50% + ${y*max}px))`}
 joy.addEventListener('pointerdown',e=>{e.preventDefault();pointerId=e.pointerId;joy.setPointerCapture(pointerId);updateStick(e)});joy.addEventListener('pointermove',e=>{if(e.pointerId===pointerId)updateStick(e)});function resetStick(e){if(e.pointerId!==pointerId)return;pointerId=null;stickX=stickY=0;stick.style.transform='translate(-50%,-50%)'}joy.addEventListener('pointerup',resetStick);joy.addEventListener('pointercancel',resetStick);
 addEventListener('keydown',e=>{if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault();const newCommand=!e.repeat&&!keys.has(e.code);keys.add(e.code);if(moveKeys.has(e.code))cancelActionForMovement(newCommand);if(e.repeat)return;if(e.code==='Space')beginAttack();if(e.code==='KeyE')spin();if(e.code==='KeyR')dance()});addEventListener('keyup',e=>{keys.delete(e.code);if(e.code==='Space')endAttack()});addEventListener('blur',()=>{endAttack(true);attackPointerId=null;keys.clear();stickX=stickY=0;stick.style.transform='translate(-50%,-50%)'});
-function start(gltf){const model=gltf.scene;model.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;o.frustumCulled=false;o.material.side=THREE.DoubleSide}});player.add(model);mixer=new THREE.AnimationMixer(model);for(const clip of gltf.animations)actions[clip.name]=mixer.clipAction(clip);play('Idle1_Base',0);document.getElementById('loading').remove();animate()}
+function start(gltf){const model=gltf.scene;model.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;o.frustumCulled=false;o.material.side=THREE.DoubleSide}});player.add(model);mixer=new THREE.AnimationMixer(model);for(const clip of gltf.animations)actions[clip.name]=mixer.clipAction(clip);mixer.addEventListener('finished',e=>{
+  if(dancing&&current==='Dance_Base'&&e.action===actions.Dance_Base)play('Dance_Loop_BASE',.12);
+});play('Idle1_Base',0);document.getElementById('loading').remove();animate()}
 const loader=new GLTFLoader();const embedded=document.getElementById('embedded-model');if(embedded){try{const b=atob(embedded.textContent.trim()),a=new Uint8Array(b.length);for(let i=0;i<b.length;i++)a[i]=b.charCodeAt(i);loader.parse(a.buffer,'',start,fail)}catch(e){fail(e)}}else loader.load('./garen.glb',start,undefined,fail);
 function fail(err){console.error(err);document.getElementById('loadText').textContent='Could not load model. Open through a local web server or use the single-file edition.';document.querySelector('#loading .spin').style.display='none'}
 function animate(){
@@ -141,16 +174,14 @@ function animate(){
   if(moving&&(now>=lockUntil||current==='Spell3_0')){
     x/=Math.max(1,len);y/=Math.max(1,len);
     const speed=4.5*(inputTime()<runSpellUntil?1.35:1)*(spell1Target ? .05 : 1);
-    player.position.x+=x*speed*dt;player.position.z+=y*speed*dt;
-    const rad=Math.hypot(player.position.x,player.position.z);
-    if(rad>10.9){player.position.x*=10.9/rad;player.position.z*=10.9/rad}
+    movePlayer(x*speed*dt,y*speed*dt);
     // The model faces local +Z; screen right/down map to world +X/+Z.
     const desired=Math.atan2(x,y);
     const diff=((desired-player.rotation.y+Math.PI*3)%(Math.PI*2))-Math.PI;
     if(!spell1Target)player.rotation.y+=diff*Math.min(1,dt*12);
     if(now>=lockUntil&&!spell1Target)play(runSpellActive()?'Run_Spell1':'Run_Base');
   }else if(now>=lockUntil&&!spell1Target)play('Idle1_Base');
-  for(const t of targets){if(t.hp<=0&&now>t.cool){t.hp=3;t.group.visible=true}if(t.hp>0)t.group.children[1].rotation.y+=dt*.45}
+  for(const t of targets){if(t.hp<=0&&now>t.cool&&!overlapsTarget(player.position,t)){t.hp=3;t.group.visible=true}if(t.hp>0)t.group.children[1].rotation.y+=dt*.45}
   if(mixer)mixer.update(dt);
   const aspect=innerWidth/innerHeight;
   const distance=aspect<.7?11.5:9.8;
