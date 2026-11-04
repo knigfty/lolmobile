@@ -19,9 +19,11 @@ const player=new THREE.Group();scene.add(player);let mixer,actions={},current=''
 const moveKeys=new Set(['KeyA','KeyD','KeyW','KeyS','ArrowLeft','ArrowRight','ArrowUp','ArrowDown']);
 const ATTACK_HOLD_MS=250;
 let attackHoldTimer=null,attackHolding=false,attackWasHold=false,attackPointerId=null;
-let runSpellUntil=0,runSpellReadyAt=0;
+let runSpellUntil=0,runSpellReadyAt=0,runSpellArmed=false;
+let spell1Target=null,spell1Until=0,spell1HitAt=0,spell1Hit=false;
+const SPELL1_RANGE=2.45,SPELL1_CONE_COS=Math.cos(Math.PI/4);
 const inputTime=()=>performance.now()/1000;
-const runSpellActive=()=>inputTime()<runSpellUntil;
+const runSpellActive=()=>runSpellArmed&&inputTime()<runSpellUntil;
 function movementInput(){
   let x=stickX,y=stickY;
   if(keys.has('KeyA')||keys.has('ArrowLeft'))x-=1;
@@ -32,12 +34,53 @@ function movementInput(){
 }
 function startRunSpell(){
   const time=inputTime();
-  if(runSpellActive())return;
+  updateRunSpell();
+  if(runSpellActive()||spell1Target)return;
   if(time<runSpellReadyAt){toast('RUN SPELL ON COOLDOWN');return}
   if(!mixer||now<lockUntil||!movementInput().moving)return;
   runSpellUntil=time+2.5;
-  runSpellReadyAt=time+8;
+  runSpellArmed=true;
+  runSpellReadyAt=Infinity;
   play('Run_Spell1',.12);
+}
+// Boost lifetime is independent of consuming the empowered strike.
+function endRunSpell(time){runSpellArmed=false;runSpellReadyAt=time+8}
+function damageTarget(t){
+  if(t.hp<=0||!t.group.visible)return;
+  t.hp--;hitCount++;hitsEl.textContent=hitCount;
+  t.body.material.color.setHex(0xffe5a3);t.head.material.color.setHex(0xffe5a3);
+  setTimeout(()=>{t.body.material.color.setHex(0xc17c58);t.head.material.color.setHex(0xc17c58)},180);
+  toast(t.hp<=0?'TARGET DOWN!':'HIT!');
+  if(t.hp<=0){t.group.visible=false;t.cool=now+4}
+}
+function updateRunSpell(){
+  const time=inputTime();
+  if(spell1Target){
+    if(!spell1Hit&&time>=spell1HitAt){
+      spell1Hit=true;
+      if(player.position.distanceTo(spell1Target.group.position)<=SPELL1_RANGE)damageTarget(spell1Target);
+    }
+    if(time>=spell1Until){spell1Target=null;endRunSpell(spell1Until)}
+    return;
+  }
+  if(!runSpellArmed)return;
+  if(time>=runSpellUntil){endRunSpell(runSpellUntil);return}
+  const forward=new THREE.Vector3(0,0,1).applyQuaternion(player.quaternion);
+  let nearest=null,nearestDistance=Infinity;
+  for(const t of targets){
+    if(t.hp<=0||!t.group.visible)continue;
+    const dx=t.group.position.x-player.position.x,dz=t.group.position.z-player.position.z;
+    const distance=Math.hypot(dx,dz);
+    if(distance>SPELL1_RANGE||distance<1e-6||distance>=nearestDistance)continue;
+    if((dx*forward.x+dz*forward.z)/distance+1e-9<SPELL1_CONE_COS)continue;
+    nearest=t;nearestDistance=distance;
+  }
+  if(!nearest)return;
+  spell1Target=nearest;
+  const duration=actions.Spell1.getClip().duration;
+  spell1Until=time+duration;spell1HitAt=time+duration*.45;spell1Hit=false;
+  player.rotation.y=Math.atan2(nearest.group.position.x-player.position.x,nearest.group.position.z-player.position.z);
+  play('Spell1',.08,true);
 }
 function beginAttack(){
   if(attackHolding)return;
@@ -61,7 +104,7 @@ function play(name,fade=.18,once=false){if(!actions[name]||current===name)return
 // A fresh movement command cancels an attack; held input waits for it to finish.
 // Dances still yield to any movement, and spins allow movement throughout.
 function cancelActionForMovement(newCommand=false){
-  if(now>=lockUntil||current==='Spell3_0')return;
+  if(now>=lockUntil||current==='Spell3_0'||spell1Target)return;
   if(current.startsWith('Attack')&&!newCommand)return;
   lockUntil=0;
   clearTimeout(damageTimer);
@@ -70,7 +113,7 @@ function cancelActionForMovement(newCommand=false){
   current='';
   play('Run_Base',0);
 }
-function action(name,duration,damage){if(!mixer||now<lockUntil||runSpellActive())return;lockUntil=now+(name.startsWith('Attack')?actions[name].getClip().duration:duration);play(name,.12,true);if(damage){damageTimer=setTimeout(()=>{damageTimer=null;for(const t of targets){if(t.hp<=0)continue;const dx=t.group.position.x-player.position.x,dz=t.group.position.z-player.position.z,dist=Math.hypot(dx,dz);const forward=new THREE.Vector3(0,0,1).applyQuaternion(player.quaternion);const facing=dist<.01||((dx*forward.x+dz*forward.z)/dist)>.15;if(dist<(name.startsWith('Spell3')?3.15:2.45)&&facing){t.hp--;t.body.material.color.setHex(0xffe5a3);t.head.material.color.setHex(0xffe5a3);setTimeout(()=>{t.body.material.color.setHex(0xc17c58);t.head.material.color.setHex(0xc17c58)},180);hitCount++;hitsEl.textContent=hitCount;toast(t.hp<=0?'TARGET DOWN!':'HIT!');if(t.hp<=0){t.group.visible=false;t.cool=now+4}}}},duration*450)}}
+function action(name,duration,damage){if(!mixer||now<lockUntil||runSpellActive()||spell1Target)return;lockUntil=now+(name.startsWith('Attack')?actions[name].getClip().duration:duration);play(name,.12,true);if(damage){damageTimer=setTimeout(()=>{damageTimer=null;for(const t of targets){if(t.hp<=0)continue;const dx=t.group.position.x-player.position.x,dz=t.group.position.z-player.position.z,dist=Math.hypot(dx,dz);const forward=new THREE.Vector3(0,0,1).applyQuaternion(player.quaternion);const facing=dist<.01||((dx*forward.x+dz*forward.z)/dist)>.15;if(dist<(name.startsWith('Spell3')?3.15:2.45)&&facing){damageTarget(t)}}},duration*450)}}
 function attack(){attackIndex=1-attackIndex;action(attackIndex?'Attack1':'Attack2',.78,true)}function spin(){action('Spell3_0',1.35,true)}function dance(){action(actions['Dance_Loop_BASE']?'Dance_Loop_BASE':'Dance_Base',2.6,false)}
 const attackButton=document.getElementById('attack');
 attackButton.addEventListener('pointerdown',e=>{
@@ -91,21 +134,22 @@ function fail(err){console.error(err);document.getElementById('loadText').textCo
 function animate(){
   requestAnimationFrame(animate);
   const dt=Math.min(clock.getDelta(),.05);now+=dt;
+  updateRunSpell();
   let {x,y,moving}=movementInput();
   const len=Math.hypot(x,y);
   if(moving)cancelActionForMovement();
   if(moving&&(now>=lockUntil||current==='Spell3_0')){
     x/=Math.max(1,len);y/=Math.max(1,len);
-    const speed=4.5;
+    const speed=4.5*(inputTime()<runSpellUntil?1.35:1)*(spell1Target ? .05 : 1);
     player.position.x+=x*speed*dt;player.position.z+=y*speed*dt;
     const rad=Math.hypot(player.position.x,player.position.z);
     if(rad>10.9){player.position.x*=10.9/rad;player.position.z*=10.9/rad}
     // The model faces local +Z; screen right/down map to world +X/+Z.
     const desired=Math.atan2(x,y);
     const diff=((desired-player.rotation.y+Math.PI*3)%(Math.PI*2))-Math.PI;
-    player.rotation.y+=diff*Math.min(1,dt*12);
-    if(now>=lockUntil)play(runSpellActive()?'Run_Spell1':'Run_Base');
-  }else if(now>=lockUntil)play('Idle1_Base');
+    if(!spell1Target)player.rotation.y+=diff*Math.min(1,dt*12);
+    if(now>=lockUntil&&!spell1Target)play(runSpellActive()?'Run_Spell1':'Run_Base');
+  }else if(now>=lockUntil&&!spell1Target)play('Idle1_Base');
   for(const t of targets){if(t.hp<=0&&now>t.cool){t.hp=3;t.group.visible=true}if(t.hp>0)t.group.children[1].rotation.y+=dt*.45}
   if(mixer)mixer.update(dt);
   const aspect=innerWidth/innerHeight;
