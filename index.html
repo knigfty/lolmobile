@@ -21,9 +21,8 @@ const ATTACK_HOLD_MS=250;
 const PLAYER_RADIUS=.4,ARENA_RADIUS=10.9;
 let dancing=false,activeAttackName='',attackStartedAt=0,attackUntil=0,pendingAttackCommand=null;
 const SPIN_DURATION=3,SPIN_COUNT=7;
-const SPIN_VARIANTS=['Spell3_0','Spell3_180','Spell3_-180'];
-let spinVariantIndex=0,activeSpinName='',spinStartedAt=0,spinUntil=0;
-const isSpinAnimation=name=>SPIN_VARIANTS.includes(name);
+let activeSpinName='',spinStartedAt=0,spinUntil=0;
+const isSpinAnimation=name=>name==='Spell3_0';
 let attackHoldTimer=null,attackHolding=false,attackWasHold=false,attackPointerId=null;
 let runSpellUntil=0,runSpellReadyAt=0,runSpellArmed=false;
 let spell1Target=null,spell1Until=0,spell1HitAt=0,spell1Hit=false,spell1StartedAt=0,pendingSpellCommand=null;
@@ -231,9 +230,11 @@ function attack(){
 function spin(){
   if(queueSpellCommand('spin')||queueAttackCommand('spin'))return;
   if(!mixer||now<lockUntil&&!dancing||runSpellActive())return;
-  const name=SPIN_VARIANTS[spinVariantIndex];
-  spinVariantIndex=(spinVariantIndex+1)%SPIN_VARIANTS.length;
+  const name='Spell3_0';
   action(name,SPIN_DURATION,false);
+  // Extend the window through repeats at the original asset's playback speed.
+  actions[name].setEffectiveTimeScale(1).setLoop(THREE.LoopRepeat,Infinity);
+  actions[name].clampWhenFinished=false;
   activeSpinName=name;spinStartedAt=inputTime();spinUntil=spinStartedAt+SPIN_DURATION;lockUntil=Infinity;
   for(let pulse=1;pulse<=SPIN_COUNT;pulse++)setTimeout(spinPulse,pulse*SPIN_DURATION*1000/SPIN_COUNT);
 }
@@ -255,24 +256,7 @@ document.getElementById('skill').addEventListener('pointerdown',e=>{e.preventDef
 const joy=document.getElementById('joystick'),stick=document.getElementById('stick');let pointerId=null;function updateStick(e){const r=joy.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,max=r.width*.32;let x=(e.clientX-cx)/max,y=(e.clientY-cy)/max;const l=Math.hypot(x,y);if(l>1){x/=l;y/=l}const newCommand=stickX===0&&stickY===0&&l>0;stickX=x;stickY=y;if(l>0)cancelActionForMovement(newCommand);stick.style.transform=`translate(calc(-50% + ${x*max}px),calc(-50% + ${y*max}px))`}
 joy.addEventListener('pointerdown',e=>{e.preventDefault();pointerId=e.pointerId;joy.setPointerCapture(pointerId);updateStick(e)});joy.addEventListener('pointermove',e=>{if(e.pointerId===pointerId)updateStick(e)});function resetStick(e){if(e.pointerId!==pointerId)return;pointerId=null;stickX=stickY=0;stick.style.transform='translate(-50%,-50%)'}joy.addEventListener('pointerup',resetStick);joy.addEventListener('pointercancel',resetStick);
 addEventListener('keydown',e=>{if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault();const newCommand=!e.repeat&&!keys.has(e.code);keys.add(e.code);if(moveKeys.has(e.code))cancelActionForMovement(newCommand);if(e.repeat)return;if(e.code==='Space')beginAttack();if(e.code==='KeyE')spin();if(e.code==='KeyR')dance()});addEventListener('keyup',e=>{keys.delete(e.code);if(e.code==='Space')endAttack()});addEventListener('blur',()=>{endAttack(true);attackPointerId=null;keys.clear();stickX=stickY=0;stick.style.transform='translate(-50%,-50%)'});
-// Preserve the spin pose while timing exactly seven root rotations over three seconds.
-function prepareAnimation(clip){
-  if(!isSpinAnimation(clip.name))return clip;
-  const result=clip.clone(),track=result.tracks.find(t=>t.name==='Root.quaternion');
-  if(!track)return result;
-  const original=new THREE.Quaternion(),twist=new THREE.Quaternion(),swing=new THREE.Quaternion();
-  const axis=new THREE.Vector3(0,1,0);
-  const startAngle=2*Math.atan2(track.values[1],track.values[3]);
-  for(let i=0;i<track.times.length;i++){
-    original.fromArray(track.values,i*4);
-    twist.set(0,original.y,0,original.w).normalize();
-    swing.copy(twist).invert().multiply(original);
-    twist.setFromAxisAngle(axis,startAngle+Math.PI*2*SPIN_COUNT*track.times[i]/SPIN_DURATION);
-    twist.multiply(swing).normalize().toArray(track.values,i*4);
-  }
-  return result;
-}
-function start(gltf){const model=gltf.scene;model.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;o.frustumCulled=false;o.material.side=THREE.DoubleSide}});player.add(model);mixer=new THREE.AnimationMixer(model);for(const clip of gltf.animations)actions[clip.name]=mixer.clipAction(prepareAnimation(clip));mixer.addEventListener('finished',e=>{
+function start(gltf){const model=gltf.scene;model.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;o.frustumCulled=false;o.material.side=THREE.DoubleSide}});player.add(model);mixer=new THREE.AnimationMixer(model);for(const clip of gltf.animations)actions[clip.name]=mixer.clipAction(clip);mixer.addEventListener('finished',e=>{
   if(dancing&&current==='Dance_Base'&&e.action===actions.Dance_Base)play('Dance_Loop_BASE',.12);
 });play('Idle1_Base',0);document.getElementById('loading').remove();animate()}
 const loader=new GLTFLoader();const embedded=document.getElementById('embedded-model');if(embedded){try{const b=atob(embedded.textContent.trim()),a=new Uint8Array(b.length);for(let i=0;i<b.length;i++)a[i]=b.charCodeAt(i);loader.parse(a.buffer,'',start,fail)}catch(e){fail(e)}}else loader.load('./garen.glb',start,undefined,fail);
@@ -306,7 +290,8 @@ function animate(){
     if(activeAttackName||activeSpinName){
       const name=activeAttackName||activeSpinName;
       const started=activeAttackName?attackStartedAt:spinStartedAt;
-      actions[name].time=Math.max(0,inputTime()-started);
+      const elapsed=Math.max(0,inputTime()-started);
+      actions[name].time=activeSpinName?elapsed%actions[name].getClip().duration:elapsed;
       mixer.update(0);
     }
   }
