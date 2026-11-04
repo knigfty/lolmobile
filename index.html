@@ -179,11 +179,17 @@ function endAttack(cancelled=false){
 }
 function toast(msg){const el=document.getElementById('message');el.textContent=msg;el.style.opacity='1';clearTimeout(toastTimeout);toastTimeout=setTimeout(()=>el.style.opacity='0',750)}
 function play(name,fade=.18,once=false){if(!actions[name]||current===name)return;const old=actions[current],next=actions[name];if(old){if(fade>0)old.fadeOut(fade);else old.stop()}next.reset().fadeIn(fade).play();next.setLoop(once?THREE.LoopOnce:THREE.LoopRepeat,once?1:Infinity);next.clampWhenFinished=once;current=name;stateEl.textContent=isSpinAnimation(name)?`Spin (${name})`:name.replace(/_Base|Garen_2013_/g,'').replace('Spell3_0','Spin').replace('Attack1','Attack').replace('Idle1','Idle').replace('Run','Running').replace('Running_Spell1','Run Spell1')}
-// Movement requests shorten attack recovery; dances yield immediately.
+// Held movement waits for half an attack; a fresh move interrupts immediately.
 // Dances still yield to any movement, and spins allow movement throughout.
 function cancelActionForMovement(newCommand=false){
   if(spell1Target){if(newCommand)queueSpellCommand('move');return}
-  if(activeAttackName){if(newCommand)queueAttackCommand('move');return}
+  if(activeAttackName){
+    if(!newCommand)return;
+    activeAttackName='';pendingAttackCommand=null;attackUntil=0;lockUntil=0;
+    clearTimeout(damageTimer);damageTimer=null;
+    mixer.stopAllAction();current='';play('Run_Base',0);
+    return;
+  }
   if(now>=lockUntil||isSpinAnimation(current))return;
   if(current.startsWith('Attack')&&!newCommand)return;
   lockUntil=0;dancing=false;
