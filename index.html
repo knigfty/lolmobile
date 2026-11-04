@@ -142,7 +142,7 @@ function updateRunSpell(){
 function queueAttackCommand(command){
   if(!activeAttackName)return false;
   pendingAttackCommand=command;
-  const earlyEnd=attackStartedAt+actions[activeAttackName].getClip().duration-.2;
+  const earlyEnd=attackStartedAt+actions[activeAttackName].getClip().duration*.5;
   attackUntil=Math.min(attackUntil,Math.max(inputTime(),earlyEnd));
   return true;
 }
