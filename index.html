@@ -19,7 +19,8 @@ const player=new THREE.Group();scene.add(player);let mixer,actions={},current=''
 const moveKeys=new Set(['KeyA','KeyD','KeyW','KeyS','ArrowLeft','ArrowRight','ArrowUp','ArrowDown']);
 const ATTACK_HOLD_MS=250;
 const PLAYER_RADIUS=.4,ARENA_RADIUS=10.9;
-let dancing=false;
+let dancing=false,activeAttackName='',attackStartedAt=0,pendingAttackCommand=null;
+const SPIN_DURATION=3,SPIN_COUNT=7;
 let attackHoldTimer=null,attackHolding=false,attackWasHold=false,attackPointerId=null;
 let runSpellUntil=0,runSpellReadyAt=0,runSpellArmed=false;
 let spell1Target=null,spell1Until=0,spell1HitAt=0,spell1Hit=false,spell1StartedAt=0,pendingSpellCommand=null;
@@ -90,7 +91,7 @@ function queueSpellCommand(command){
   if(!spell1Target)return false;
   pendingSpellCommand=command;
   // A late command finishes immediately rather than backdating the cooldown.
-  const earlyEnd=spell1StartedAt+actions.Spell1.getClip().duration-.1;
+  const earlyEnd=spell1StartedAt+actions.Spell1.getClip().duration-.2;
   spell1Until=Math.min(spell1Until,Math.max(inputTime(),earlyEnd));
   return true;
 }
@@ -136,11 +137,30 @@ function updateRunSpell(){
   player.rotation.y=Math.atan2(nearest.group.position.x-player.position.x,nearest.group.position.z-player.position.z);
   play('Spell1',.08,true);
 }
+function queueAttackCommand(command){
+  if(!activeAttackName)return false;
+  pendingAttackCommand=command;
+  const earlyEnd=attackStartedAt+actions[activeAttackName].getClip().duration-.2;
+  lockUntil=Math.min(lockUntil,Math.max(now,earlyEnd));
+  return true;
+}
+function updateAttack(){
+  if(!activeAttackName||now<lockUntil)return;
+  actions[activeAttackName].stop();activeAttackName='';current='';lockUntil=0;
+  play(movementInput().moving?'Run_Base':'Idle1_Base',0);
+  const command=pendingAttackCommand;pendingAttackCommand=null;
+  if(command?.type==='attack')action(command.name,.78,true);
+  else if(command==='spin')spin();else if(command==='dance')dance();
+}
+function spinPulse(){
+  const hits=targets.filter(t=>t.hp>0&&t.group.visible&&Math.hypot(t.group.position.x-player.position.x,t.group.position.z-player.position.z)<=3);
+  for(const t of hits)damageTarget(t);
+}
 function beginAttack(){
   if(attackHolding)return;
   cancelDance();
   attackHolding=true;attackWasHold=false;
-  if(queueSpellCommand('attack')){attackWasHold=true;return}
+  if(spell1Target||activeAttackName){attackWasHold=true;attack();return}
   if(!movementInput().moving){attackWasHold=true;attack();return}
   attackHoldTimer=setTimeout(()=>{
     attackHoldTimer=null;
@@ -157,10 +177,11 @@ function endAttack(cancelled=false){
 }
 function toast(msg){const el=document.getElementById('message');el.textContent=msg;el.style.opacity='1';clearTimeout(toastTimeout);toastTimeout=setTimeout(()=>el.style.opacity='0',750)}
 function play(name,fade=.18,once=false){if(!actions[name]||current===name)return;const old=actions[current],next=actions[name];if(old){if(fade>0)old.fadeOut(fade);else old.stop()}next.reset().fadeIn(fade).play();next.setLoop(once?THREE.LoopOnce:THREE.LoopRepeat,once?1:Infinity);next.clampWhenFinished=once;current=name;stateEl.textContent=name.replace(/_Base|Garen_2013_/g,'').replace('Spell3_0','Spin').replace('Attack1','Attack').replace('Idle1','Idle').replace('Run','Running').replace('Running_Spell1','Run Spell1')}
-// A fresh movement command cancels an attack; held input waits for it to finish.
+// Movement requests shorten attack recovery; dances yield immediately.
 // Dances still yield to any movement, and spins allow movement throughout.
 function cancelActionForMovement(newCommand=false){
   if(spell1Target){if(newCommand)queueSpellCommand('move');return}
+  if(activeAttackName){if(newCommand)queueAttackCommand('move');return}
   if(now>=lockUntil||current==='Spell3_0')return;
   if(current.startsWith('Attack')&&!newCommand)return;
   lockUntil=0;dancing=false;
@@ -175,6 +196,10 @@ function action(name,duration,damage){
   if(!mixer||now<lockUntil||runSpellActive()||spell1Target)return;
   lockUntil=now+(name.startsWith('Attack')?actions[name].getClip().duration:duration);
   play(name,.12,true);
+  if(name.startsWith('Attack')){
+    activeAttackName=name;attackStartedAt=now;pendingAttackCommand=null;
+    if(movementInput().moving)queueAttackCommand('move');
+  }
   if(damage){
     damageTimer=setTimeout(()=>{
       damageTimer=null;
@@ -193,10 +218,21 @@ function action(name,duration,damage){
     },duration*450);
   }
 }
-function attack(){if(queueSpellCommand('attack'))return;attackIndex=1-attackIndex;action(attackIndex?'Attack1':'Attack2',.78,true)}
-function spin(){if(queueSpellCommand('spin'))return;action('Spell3_0',1.35,true)}
+function attack(){
+  if(queueSpellCommand('attack'))return;
+  attackIndex=1-attackIndex;
+  const name=attackIndex?'Attack1':'Attack2';
+  if(queueAttackCommand({type:'attack',name}))return;
+  action(name,.78,true);
+}
+function spin(){
+  if(queueSpellCommand('spin')||queueAttackCommand('spin'))return;
+  if(!mixer||now<lockUntil&&!dancing||runSpellActive())return;
+  action('Spell3_0',SPIN_DURATION,false);
+  for(let pulse=1;pulse<=SPIN_COUNT;pulse++)setTimeout(spinPulse,pulse*SPIN_DURATION*1000/SPIN_COUNT);
+}
 function dance(){
-  if(queueSpellCommand('dance'))return;
+  if(queueSpellCommand('dance')||queueAttackCommand('dance'))return;
   if(!mixer||now<lockUntil||runSpellActive()||spell1Target)return;
   dancing=true;lockUntil=Infinity;play('Dance_Base',.2,true);
 }
@@ -213,7 +249,24 @@ document.getElementById('skill').addEventListener('pointerdown',e=>{e.preventDef
 const joy=document.getElementById('joystick'),stick=document.getElementById('stick');let pointerId=null;function updateStick(e){const r=joy.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,max=r.width*.32;let x=(e.clientX-cx)/max,y=(e.clientY-cy)/max;const l=Math.hypot(x,y);if(l>1){x/=l;y/=l}const newCommand=stickX===0&&stickY===0&&l>0;stickX=x;stickY=y;if(l>0)cancelActionForMovement(newCommand);stick.style.transform=`translate(calc(-50% + ${x*max}px),calc(-50% + ${y*max}px))`}
 joy.addEventListener('pointerdown',e=>{e.preventDefault();pointerId=e.pointerId;joy.setPointerCapture(pointerId);updateStick(e)});joy.addEventListener('pointermove',e=>{if(e.pointerId===pointerId)updateStick(e)});function resetStick(e){if(e.pointerId!==pointerId)return;pointerId=null;stickX=stickY=0;stick.style.transform='translate(-50%,-50%)'}joy.addEventListener('pointerup',resetStick);joy.addEventListener('pointercancel',resetStick);
 addEventListener('keydown',e=>{if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault();const newCommand=!e.repeat&&!keys.has(e.code);keys.add(e.code);if(moveKeys.has(e.code))cancelActionForMovement(newCommand);if(e.repeat)return;if(e.code==='Space')beginAttack();if(e.code==='KeyE')spin();if(e.code==='KeyR')dance()});addEventListener('keyup',e=>{keys.delete(e.code);if(e.code==='Space')endAttack()});addEventListener('blur',()=>{endAttack(true);attackPointerId=null;keys.clear();stickX=stickY=0;stick.style.transform='translate(-50%,-50%)'});
-function start(gltf){const model=gltf.scene;model.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;o.frustumCulled=false;o.material.side=THREE.DoubleSide}});player.add(model);mixer=new THREE.AnimationMixer(model);for(const clip of gltf.animations)actions[clip.name]=mixer.clipAction(clip);mixer.addEventListener('finished',e=>{
+// Preserve the spin pose while timing exactly seven root rotations over three seconds.
+function prepareAnimation(clip){
+  if(clip.name!=='Spell3_0')return clip;
+  const result=clip.clone(),track=result.tracks.find(t=>t.name==='Root.quaternion');
+  if(!track)return result;
+  const original=new THREE.Quaternion(),twist=new THREE.Quaternion(),swing=new THREE.Quaternion();
+  const axis=new THREE.Vector3(0,1,0);
+  const startAngle=2*Math.atan2(track.values[1],track.values[3]);
+  for(let i=0;i<track.times.length;i++){
+    original.fromArray(track.values,i*4);
+    twist.set(0,original.y,0,original.w).normalize();
+    swing.copy(twist).invert().multiply(original);
+    twist.setFromAxisAngle(axis,startAngle+Math.PI*2*SPIN_COUNT*track.times[i]/SPIN_DURATION);
+    twist.multiply(swing).normalize().toArray(track.values,i*4);
+  }
+  return result;
+}
+function start(gltf){const model=gltf.scene;model.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;o.frustumCulled=false;o.material.side=THREE.DoubleSide}});player.add(model);mixer=new THREE.AnimationMixer(model);for(const clip of gltf.animations)actions[clip.name]=mixer.clipAction(prepareAnimation(clip));mixer.addEventListener('finished',e=>{
   if(dancing&&current==='Dance_Base'&&e.action===actions.Dance_Base)play('Dance_Loop_BASE',.12);
 });play('Idle1_Base',0);document.getElementById('loading').remove();animate()}
 const loader=new GLTFLoader();const embedded=document.getElementById('embedded-model');if(embedded){try{const b=atob(embedded.textContent.trim()),a=new Uint8Array(b.length);for(let i=0;i<b.length;i++)a[i]=b.charCodeAt(i);loader.parse(a.buffer,'',start,fail)}catch(e){fail(e)}}else loader.load('./garen.glb',start,undefined,fail);
@@ -222,6 +275,7 @@ function animate(){
   requestAnimationFrame(animate);
   const dt=Math.min(clock.getDelta(),.05);now+=dt;
   updateRunSpell();
+  updateAttack();
   let {x,y,moving}=movementInput();
   const len=Math.hypot(x,y);
   if(moving)cancelActionForMovement();
