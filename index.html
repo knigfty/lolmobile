@@ -14,7 +14,14 @@ const ground=new THREE.Mesh(new THREE.PlaneGeometry(34,34),new THREE.MeshStandar
 const ring=new THREE.Mesh(new THREE.RingGeometry(11.65,11.85,80),new THREE.MeshBasicMaterial({color:0xd2c08d,side:THREE.DoubleSide,transparent:true,opacity:.75}));ring.rotation.x=-Math.PI/2;ring.position.y=.012;scene.add(ring);
 const lineMat=new THREE.MeshBasicMaterial({color:0xd8d2a3,transparent:true,opacity:.18});for(let r of [4,8]){const g=new THREE.RingGeometry(r-.035,r+.035,80);const m=new THREE.Mesh(g,lineMat);m.rotation.x=-Math.PI/2;m.position.y=.016;scene.add(m)}
 function box(x,z,w,h,d,color){const mesh=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),new THREE.MeshStandardMaterial({color,roughness:.9}));mesh.position.set(x,h/2,z);mesh.castShadow=true;mesh.receiveShadow=true;scene.add(mesh);return mesh}for(let i=0;i<12;i++){const a=i*Math.PI/6;const r=13.7;box(Math.sin(a)*r,Math.cos(a)*r,1.5,.8+(i%3)*.35,1.5,i%2?0x677b70:0x8b8f79)}
-const targetMat=new THREE.MeshStandardMaterial({color:0xc17c58,roughness:.7,metalness:.12});const targets=[];for(const [x,z] of [[4,-3],[-4,-4],[5,5],[-5,4],[0,-7]]){const group=new THREE.Group();group.position.set(x,0,z);const base=new THREE.Mesh(new THREE.CylinderGeometry(.65,.8,.3,10),new THREE.MeshStandardMaterial({color:0x554f43}));base.position.y=.15;group.add(base);const body=new THREE.Mesh(new THREE.CylinderGeometry(.38,.46,1.2,10),targetMat.clone());body.position.y=1.03;body.castShadow=true;group.add(body);const head=new THREE.Mesh(new THREE.SphereGeometry(.35,12,8),targetMat.clone());head.position.y=1.85;head.castShadow=true;group.add(head);scene.add(group);targets.push({group,body,head,hp:3,cool:0,hitboxRadius:.8})}
+const targetMat=new THREE.MeshStandardMaterial({color:0xc17c58,roughness:.7,metalness:.12});const targets=[];for(const [x,z] of [[4,-3],[-4,-4],[5,5],[-5,4],[0,-7]]){const group=new THREE.Group();group.position.set(x,0,z);const base=new THREE.Mesh(new THREE.CylinderGeometry(.65,.8,.3,10),new THREE.MeshStandardMaterial({color:0x554f43}));base.position.y=.15;group.add(base);const body=new THREE.Mesh(new THREE.CylinderGeometry(.38,.46,1.2,10),targetMat.clone());body.position.y=1.03;body.castShadow=true;group.add(body);const head=new THREE.Mesh(new THREE.SphereGeometry(.35,12,8),targetMat.clone());head.position.y=1.85;head.castShadow=true;group.add(head);scene.add(group);const visual=new THREE.Group();group.remove(base,body,head);visual.add(base,body,head);group.add(visual);
+const healthBar=new THREE.Group();
+const red=new THREE.Mesh(new THREE.PlaneGeometry(1.25,.15),new THREE.MeshBasicMaterial({color:0xd63838,depthTest:false}));
+const green=new THREE.Mesh(new THREE.PlaneGeometry(1.25,.15),new THREE.MeshBasicMaterial({color:0x35d05b,depthTest:false}));
+green.position.z=.002;red.renderOrder=10;green.renderOrder=11;healthBar.add(red,green);healthBar.visible=false;scene.add(healthBar);
+const rubble=new THREE.Group();visual.add(rubble);rubble.visible=false;
+for(let i=0;i<8;i++){const piece=new THREE.Mesh(new THREE.BoxGeometry(.22+(i%3)*.06,.2,.24),targetMat.clone());piece.castShadow=true;rubble.add(piece)}
+targets.push({group,visual,base,body,head,rubble,healthBar,green,maxHp:10,hp:10,cool:0,hitboxRadius:.8,lastHit:-Infinity,hurtX:0,hurtZ:0,destroyAt:null})}
 const player=new THREE.Group();scene.add(player);let mixer,actions={},current='',lockUntil=0,hitCount=0;const clock=new THREE.Clock();const keys=new Set();let stickX=0,stickY=0,attackIndex=0,now=0;const stateEl=document.getElementById('state'),hitsEl=document.getElementById('hits');let toastTimeout,damageTimer=null;
 const moveKeys=new Set(['KeyA','KeyD','KeyW','KeyS','ArrowLeft','ArrowRight','ArrowUp','ArrowDown']);
 const ATTACK_HOLD_MS=250;
@@ -80,11 +87,51 @@ function startRunSpell(){
 function endRunSpell(time){runSpellArmed=false;runSpellReadyAt=time+8}
 function damageTarget(t){
   if(t.hp<=0||!t.group.visible)return;
-  t.hp--;hitCount++;hitsEl.textContent=hitCount;
-  t.body.material.color.setHex(0xffe5a3);t.head.material.color.setHex(0xffe5a3);
-  setTimeout(()=>{t.body.material.color.setHex(0xc17c58);t.head.material.color.setHex(0xc17c58)},180);
+  const time=inputTime();
+  t.hp=Math.max(0,t.hp-1);hitCount++;hitsEl.textContent=hitCount;
+  t.lastHit=time;
+  const dx=t.group.position.x-player.position.x,dz=t.group.position.z-player.position.z,length=Math.hypot(dx,dz)||1;
+  t.hurtX=dx/length;t.hurtZ=dz/length;
+  t.healthBar.visible=true;updateTargetHealth(t);
   toast(t.hp<=0?'TARGET DOWN!':'HIT!');
-  if(t.hp<=0){t.group.visible=false;t.cool=now+4}
+  if(t.hp<=0){t.destroyAt=time;t.cool=time+4}
+
+}
+function updateTargetHealth(t){
+  const fraction=Math.max(0,Math.min(1,t.hp/t.maxHp));
+  t.green.scale.x=fraction;t.green.position.x=-1.25*(1-fraction)/2;
+}
+function updateTargets(){
+  const time=inputTime();
+  for(const t of targets){
+    if(t.hp<=0&&time>t.cool&&!overlapsTarget(player.position,t)){
+      t.hp=t.maxHp;t.group.visible=true;t.destroyAt=null;t.lastHit=-Infinity;
+      t.visual.position.set(0,0,0);t.visual.rotation.set(0,0,0);t.visual.scale.setScalar(1);
+      t.base.visible=t.body.visible=t.head.visible=true;t.rubble.visible=false;updateTargetHealth(t);
+    }
+    const age=time-t.lastHit;
+    t.healthBar.visible=age<3;
+    t.healthBar.position.set(t.group.position.x,2.5,t.group.position.z);
+    t.healthBar.quaternion.copy(camera.quaternion);
+    if(t.destroyAt!==null){
+      const progress=Math.min(1,(time-t.destroyAt)/1.1);
+      t.visual.rotation.x=t.visual.rotation.z=0;
+      t.body.scale.setScalar(Math.max(.01,1-progress));t.head.scale.setScalar(Math.max(.01,1-progress));
+      t.body.position.y=1.03-progress*1.4;t.head.position.y=1.85-progress*2.2;
+      t.base.scale.y=Math.max(.01,1-progress);t.rubble.visible=true;
+      t.rubble.children.forEach((piece,i)=>{
+        const angle=i*Math.PI/4;
+        piece.position.set(Math.cos(angle)*progress*.85,Math.sin(progress*Math.PI)*(.35+(i%3)*.1)-progress*.25,Math.sin(angle)*progress*.85);
+        piece.rotation.set(progress*(i+1),progress*i,progress*(i%3));piece.scale.setScalar(Math.max(.01,1-progress*.8));
+      });
+      if(progress>=1)t.group.visible=false;
+    }else{
+      const hurt=age<.45?Math.sin(age/.45*Math.PI)*Math.exp(-age*4)*.3:0;
+      t.visual.rotation.x=t.hurtZ*hurt;t.visual.rotation.z=-t.hurtX*hurt;
+      const color=age<.12?0xffe5a3:0xc17c58;t.body.material.color.setHex(color);t.head.material.color.setHex(color);
+      t.base.scale.set(1,1,1);t.body.scale.setScalar(1);t.head.scale.setScalar(1);t.body.position.y=1.03;t.head.position.y=1.85;
+    }
+  }
 }
 function spell1SpeedMultiplier(){
   if(!spell1Target)return 1;
@@ -304,7 +351,7 @@ function animate(){
     if(!spell1Target)player.rotation.y+=diff*Math.min(1,dt*12);
     if(now>=lockUntil&&!spell1Target)play(runSpellActive()?'Run_Spell1':'Run_Base');
   }else if(now>=lockUntil&&!spell1Target)play('Idle1_Base');
-  for(const t of targets){if(t.hp<=0&&now>t.cool&&!overlapsTarget(player.position,t)){t.hp=3;t.group.visible=true}if(t.hp>0)t.group.children[1].rotation.y+=dt*.45}
+  updateTargets();
   if(mixer){
     mixer.update(dt);
     // Mobile frame gaps must not stretch recovery or the three-second spin.
