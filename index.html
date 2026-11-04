@@ -18,6 +18,7 @@ const targetMat=new THREE.MeshStandardMaterial({color:0xc17c58,roughness:.7,meta
 const player=new THREE.Group();scene.add(player);let mixer,actions={},current='',lockUntil=0,hitCount=0;const clock=new THREE.Clock();const keys=new Set();let stickX=0,stickY=0,attackIndex=0,now=0;const stateEl=document.getElementById('state'),hitsEl=document.getElementById('hits');let toastTimeout,damageTimer=null;
 const moveKeys=new Set(['KeyA','KeyD','KeyW','KeyS','ArrowLeft','ArrowRight','ArrowUp','ArrowDown']);
 const ATTACK_HOLD_MS=250;
+const ATTACK_DURATION=1,ATTACK_SHORT_DURATION=.6,ATTACK_HIT_PHASE=.1755;
 const PLAYER_RADIUS=.4,ARENA_RADIUS=10.9;
 let dancing=false,activeAttackName='',attackStartedAt=0,attackUntil=0,pendingAttackCommand=null;
 const SPIN_DURATION=3,SPIN_COUNT=7;
@@ -142,7 +143,7 @@ function updateRunSpell(){
 function queueAttackCommand(command){
   if(!activeAttackName)return false;
   pendingAttackCommand=command;
-  const earlyEnd=attackStartedAt+actions[activeAttackName].getClip().duration*.5;
+  const earlyEnd=attackStartedAt+ATTACK_SHORT_DURATION;
   attackUntil=Math.min(attackUntil,Math.max(inputTime(),earlyEnd));
   return true;
 }
@@ -205,7 +206,7 @@ function action(name,duration,damage){
   lockUntil=now+(name.startsWith('Attack')?actions[name].getClip().duration:duration);
   play(name,.12,true);
   if(name.startsWith('Attack')){
-    activeAttackName=name;attackStartedAt=inputTime();attackUntil=attackStartedAt+actions[name].getClip().duration;lockUntil=Infinity;pendingAttackCommand=null;
+    activeAttackName=name;attackStartedAt=inputTime();attackUntil=attackStartedAt+ATTACK_DURATION;actions[name].setEffectiveTimeScale(actions[name].getClip().duration/ATTACK_DURATION);lockUntil=Infinity;pendingAttackCommand=null;
     if(movementInput().moving)queueAttackCommand('move');
   }
   if(damage){
@@ -223,7 +224,7 @@ function action(name,duration,damage){
         return distance<2.45&&facing;
       });
       for(const t of hits)damageTarget(t);
-    },duration*450);
+    },name.startsWith('Attack')?ATTACK_DURATION*ATTACK_HIT_PHASE*1000:duration*450);
   }
 }
 function attack(){
@@ -297,7 +298,7 @@ function animate(){
       const name=activeAttackName||activeSpinName;
       const started=activeAttackName?attackStartedAt:spinStartedAt;
       const elapsed=Math.max(0,inputTime()-started);
-      actions[name].time=activeSpinName?elapsed%actions[name].getClip().duration:elapsed;
+      actions[name].time=activeSpinName?elapsed%actions[name].getClip().duration:elapsed*actions[name].getEffectiveTimeScale();
       mixer.update(0);
     }
   }
