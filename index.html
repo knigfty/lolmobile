@@ -28,7 +28,7 @@ const ATTACK_HOLD_MS=250;
 const ATTACK_DURATION=1.5,ATTACK_SHORT_DURATION=.75,ATTACK_HIT_PHASE=.1755;
 const PLAYER_RADIUS=.4,ARENA_RADIUS=10.9;
 let dancing=false,activeAttackName='',attackStartedAt=0,attackUntil=0,pendingAttackCommand=null;
-let attackReadyAt=0,waitingAttackName='';
+let attackReadyAt=0;
 const SPIN_DURATION=3,SPIN_COUNT=7;
 let activeSpinName='',spinStartedAt=0,spinUntil=0;
 const isSpinAnimation=name=>name==='Spell3_0';
@@ -203,14 +203,11 @@ function updateAttack(){
   if(command?.type==='attack')requestBaseAttack(command.name);
   else if(command==='spin')spin();else if(command==='dance')dance();
 }
-function requestBaseAttack(name){
+function requestBaseAttack(){
+  if(activeAttackName||inputTime()<attackReadyAt)return;
   cancelDance();
-  if(inputTime()<attackReadyAt){waitingAttackName=name;return}
-  waitingAttackName='';action(name,.78,true);
-}
-function updateAttackCooldown(){
-  if(!waitingAttackName||inputTime()<attackReadyAt||activeAttackName||spell1Target||runSpellActive()||now<lockUntil)return;
-  const name=waitingAttackName;waitingAttackName='';action(name,.78,true);
+  const name=attackIndex?'Attack2':'Attack1';
+  action(name,.78,true);
 }
 function spinPulse(){
   const hits=targets.filter(t=>t.hp>0&&t.group.visible&&Math.hypot(t.group.position.x-player.position.x,t.group.position.z-player.position.z)<=3);
@@ -240,7 +237,6 @@ function play(name,fade=.18,once=false){if(!actions[name]||current===name)return
 // Held movement waits for half an attack; a fresh move interrupts immediately.
 // Dances still yield to any movement, and spins allow movement throughout.
 function cancelActionForMovement(newCommand=false){
-  if(newCommand)waitingAttackName='';
   if(spell1Target){if(newCommand)queueSpellCommand('move');return}
   if(activeAttackName){
     if(!newCommand)return;
@@ -264,6 +260,7 @@ function action(name,duration,damage){
   lockUntil=now+(name.startsWith('Attack')?actions[name].getClip().duration:duration);
   play(name,.12,true);
   if(name.startsWith('Attack')){
+    attackIndex=name==='Attack1'?1:0;
     activeAttackName=name;attackStartedAt=inputTime();attackUntil=attackStartedAt+ATTACK_DURATION;attackReadyAt=attackStartedAt+ATTACK_DURATION;actions[name].setEffectiveTimeScale(actions[name].getClip().duration/ATTACK_DURATION);lockUntil=Infinity;pendingAttackCommand=null;
     if(movementInput().moving)queueAttackCommand('move');
   }
@@ -286,14 +283,11 @@ function action(name,duration,damage){
   }
 }
 function attack(){
+  if(activeAttackName||inputTime()<attackReadyAt)return;
   if(queueSpellCommand('attack'))return;
-  attackIndex=1-attackIndex;
-  const name=attackIndex?'Attack1':'Attack2';
-  if(queueAttackCommand({type:'attack',name}))return;
-  requestBaseAttack(name);
+  requestBaseAttack();
 }
 function spin(){
-  waitingAttackName='';
   if(queueSpellCommand('spin')||queueAttackCommand('spin'))return;
   if(!mixer||now<lockUntil&&!dancing||runSpellActive())return;
   const name='Spell3_0';
@@ -305,7 +299,6 @@ function spin(){
   for(let pulse=1;pulse<=SPIN_COUNT;pulse++)setTimeout(spinPulse,pulse*SPIN_DURATION*1000/SPIN_COUNT);
 }
 function dance(){
-  waitingAttackName='';
   if(queueSpellCommand('dance')||queueAttackCommand('dance'))return;
   if(!mixer||now<lockUntil||runSpellActive()||spell1Target)return;
   dancing=true;lockUntil=Infinity;play('Dance_Base',.2,true);
@@ -333,7 +326,6 @@ function animate(){
   const dt=Math.min(clock.getDelta(),.05);now+=dt;
   updateRunSpell();
   updateAttack();
-  updateAttackCooldown();
   if(activeSpinName&&inputTime()>=spinUntil){
     actions[activeSpinName].stop();activeSpinName='';current='';lockUntil=0;
     play(movementInput().moving?'Run_Base':'Idle1_Base',0);
