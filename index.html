@@ -23,7 +23,7 @@ let dancing=false;
 let attackHoldTimer=null,attackHolding=false,attackWasHold=false,attackPointerId=null;
 let runSpellUntil=0,runSpellReadyAt=0,runSpellArmed=false;
 let spell1Target=null,spell1Until=0,spell1HitAt=0,spell1Hit=false;
-const SPELL1_RANGE=2.45,SPELL1_CONE_COS=Math.cos(Math.PI/4);
+const SPELL1_RANGE=3,SPELL1_CONE_COS=Math.cos(Math.PI/4);
 const inputTime=()=>performance.now()/1000;
 const runSpellActive=()=>runSpellArmed&&inputTime()<runSpellUntil;
 function movementInput(){
@@ -141,7 +141,28 @@ function cancelActionForMovement(newCommand=false){
   current='';
   play('Run_Base',0);
 }
-function action(name,duration,damage){if(!mixer||now<lockUntil||runSpellActive()||spell1Target)return;lockUntil=now+(name.startsWith('Attack')?actions[name].getClip().duration:duration);play(name,.12,true);if(damage){damageTimer=setTimeout(()=>{damageTimer=null;for(const t of targets){if(t.hp<=0)continue;const dx=t.group.position.x-player.position.x,dz=t.group.position.z-player.position.z,dist=Math.hypot(dx,dz);const forward=new THREE.Vector3(0,0,1).applyQuaternion(player.quaternion);const facing=dist<.01||((dx*forward.x+dz*forward.z)/dist)>.15;if(dist<(name.startsWith('Spell3')?3.15:2.45)&&facing){damageTarget(t)}}},duration*450)}}
+function action(name,duration,damage){
+  if(!mixer||now<lockUntil||runSpellActive()||spell1Target)return;
+  lockUntil=now+(name.startsWith('Attack')?actions[name].getClip().duration:duration);
+  play(name,.12,true);
+  if(damage){
+    damageTimer=setTimeout(()=>{
+      damageTimer=null;
+      const spinning=name.startsWith('Spell3');
+      const forward=new THREE.Vector3(0,0,1).applyQuaternion(player.quaternion);
+      // Snapshot the entire hit set, then apply all damage in this same tick.
+      const hits=targets.filter(t=>{
+        if(t.hp<=0||!t.group.visible)return false;
+        const dx=t.group.position.x-player.position.x,dz=t.group.position.z-player.position.z;
+        const distance=Math.hypot(dx,dz);
+        if(spinning)return distance<=3;
+        const facing=distance<.01||(dx*forward.x+dz*forward.z)/distance>.15;
+        return distance<2.45&&facing;
+      });
+      for(const t of hits)damageTarget(t);
+    },duration*450);
+  }
+}
 function attack(){attackIndex=1-attackIndex;action(attackIndex?'Attack1':'Attack2',.78,true)}function spin(){action('Spell3_0',1.35,true)}function dance(){
   if(!mixer||now<lockUntil||runSpellActive()||spell1Target)return;
   dancing=true;lockUntil=Infinity;play('Dance_Base',.2,true);
@@ -173,7 +194,7 @@ function animate(){
   if(moving)cancelActionForMovement();
   if(moving&&(now>=lockUntil||current==='Spell3_0')){
     x/=Math.max(1,len);y/=Math.max(1,len);
-    const speed=4.5*(inputTime()<runSpellUntil?1.35:1)*(spell1Target ? .05 : 1);
+    const speed=4.5*(inputTime()<runSpellUntil?1.35:1)*(spell1Target ? .1 : 1);
     movePlayer(x*speed*dt,y*speed*dt);
     // The model faces local +Z; screen right/down map to world +X/+Z.
     const desired=Math.atan2(x,y);
