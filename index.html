@@ -335,7 +335,12 @@ function action(name,duration,damage){
   }
 }
 function attack(){
-  if(activeAttackName||inputTime()<attackReadyAt){attackRequested=true;return}
+  if(activeAttackName){
+    const bufferOpens=attackStartedAt+(attackUntil-attackStartedAt)*.5;
+    if(inputTime()>=bufferOpens)attackRequested=true;
+    return;
+  }
+  if(inputTime()<attackReadyAt){attackRequested=true;return}
   if(queueSpellCommand('attack'))return;
   requestBaseAttack();
 }
