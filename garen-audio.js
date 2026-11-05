@@ -50,7 +50,8 @@ export function createGarenAudio({AudioClass=globalThis.Audio,time=()=>performan
       event('idle',['Garen_Original_SFX_Dance_loop.ogg'],false,'dance',()=>generation===danceGeneration&&keepPlaying());
     },
     endDance(){danceGeneration++;end('dance')},
-    justice(){event('ultimate',[pick('R',6),pick('SFX_R_OnCast',3),pick('SFX_R_OnHit',3)])},
+    justice(){event('ultimate',[pick('R',6),pick('SFX_R_OnCast',3)])},
+    justiceHit(){event('ultimate',[pick('SFX_R_OnHit',3)])},
     endRunSpell(){end('runSpell')},
     endSpell1(){end('spell1')},
     stop(){for(const entry of [...active])stop(entry)}

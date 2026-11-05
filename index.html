@@ -135,10 +135,10 @@ function startRunSpell(){
 }
 // Boost lifetime is independent of consuming the empowered strike.
 function endRunSpell(time){garenAudio.endRunSpell();runSpellArmed=false;runSpellReadyAt=time+8}
-function damageTarget(t){
+function damageTarget(t,damage=1){
   if(t.hp<=0||!t.group.visible)return;
   const time=inputTime();
-  t.hp=Math.max(0,t.hp-1);hitCount++;hitsEl.textContent=hitCount;
+  t.hp=Math.max(0,t.hp-damage);hitCount++;hitsEl.textContent=hitCount;
   t.lastHit=time;
   const dx=t.group.position.x-player.position.x,dz=t.group.position.z-player.position.z,length=Math.hypot(dx,dz)||1;
   t.hurtX=dx/length;t.hurtZ=dz/length;
@@ -420,8 +420,16 @@ function justice(){
   }
   if(!nearest){toast('NO TARGET IN FRONT');return}
   player.rotation.y=Math.atan2(nearest.group.position.x-player.position.x,nearest.group.position.z-player.position.z);
-  action('Spell4_Base',actions.Spell4_Base.getClip().duration,false);
+  const duration=actions.Spell4_Base.getClip().duration;
+  action('Spell4_Base',duration,false);
   garenAudio.justice();
+  // Match the empowered strike's impact phase; damage and hit audio share a tick.
+  damageTimer=setTimeout(()=>{
+    damageTimer=null;
+    if(nearest.hp<=0||!nearest.group.visible)return;
+    damageTarget(nearest,5);
+    garenAudio.justiceHit();
+  },duration*.45*1000);
 }
 function spin(){
   attackRequested=false;
