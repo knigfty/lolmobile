@@ -1,5 +1,5 @@
-// One event may contain both a voice and SFX. Higher priorities interrupt
-// all lower-priority audio; lower events are discarded, never queued.
+// SFX are independent one-shots and always play to completion.
+// A single voice channel replaces equal/lower priorities and rejects lower ones.
 export function createGarenAudio({AudioClass=globalThis.Audio,time=()=>performance.now()/1000,random=Math.random}={}){
   const priority={idle:0,move:1,attack:2,spell:3,ultimate:4};
   const active=new Set();let movementReadyAt=0;
@@ -10,15 +10,18 @@ export function createGarenAudio({AudioClass=globalThis.Audio,time=()=>performan
     if(entry.movement&&cooldown)movementReadyAt=time()+15;
   }
   function stop(entry){entry.audio.pause();entry.audio.currentTime=0;finish(entry)}
-  function end(group){for(const entry of [...active])if(entry.group===group)stop(entry)}
+  function end(group){for(const entry of [...active])if(!entry.sfx&&entry.group===group)stop(entry)}
   function event(level,files,movement=false,group=null){
     const rank=priority[level];
-    if([...active].some(entry=>entry.rank>rank))return false;
-    if(movement&&(time()<movementReadyAt||[...active].some(entry=>entry.movement)))return false;
-    for(const entry of [...active])if(entry.rank<rank)stop(entry);
     for(const file of files){
+      const sfx=file.includes('_SFX_');
+      if(!sfx){
+        if([...active].some(entry=>!entry.sfx&&entry.rank>rank))continue;
+        if(movement&&(time()<movementReadyAt||[...active].some(entry=>entry.movement)))continue;
+        for(const entry of [...active])if(!entry.sfx)stop(entry);
+      }
       const audio=new AudioClass(new URL(`./Assets/Audio/Garen_Audio/${file}`,import.meta.url).href);
-      const entry={audio,rank,movement,group};active.add(entry);
+      const entry={audio,rank,movement,group,sfx};active.add(entry);
       audio.onended=audio.onerror=()=>finish(entry);
       try{Promise.resolve(audio.play()).catch(()=>finish(entry))}catch{finish(entry)}
     }

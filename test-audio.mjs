@@ -5,24 +5,34 @@ const {createGarenAudio}=await import('data:text/javascript,'+encodeURIComponent
 let now=0;const played=[];
 class MockAudio{constructor(url){this.url=url;this.paused=false;assert(existsSync(new URL(url)))}play(){played.push(this);return Promise.resolve()}pause(){this.paused=true}}
 const audio=createGarenAudio({AudioClass:MockAudio,time:()=>now,random:()=>.999});
-audio.move();assert.equal(played.length,1);audio.move();assert.equal(played.length,1);
-now=4;played[0].onended();now=18;audio.move();assert.equal(played.length,1);now=19;audio.move();assert.equal(played.length,2);
-audio.runSpell();assert(played[1].paused);assert.equal(played.length,4);
-audio.move();audio.attack('Attack1');assert.equal(played.length,4);
-audio.justice();assert(played[2].paused&&played[3].paused);assert.equal(played.length,6);
-audio.spell1();assert.equal(played.length,6);audio.stop();
-for(const name of ['Attack1','Attack2']){audio.attack(name);audio.hit(name);audio.stop()}
-for(const method of ['runSpell','spell1','spell1Hit','spin','justice']){audio[method]();audio.stop()}
-console.log('Audio priorities, paired playback, interruption, cooldown, and asset paths passed.');
 
-// Deliberately leave media unfinished: animation transitions must release it.
-audio.runSpell();const runClips=played.slice(-2);
-audio.spell1();assert(runClips.every(clip=>clip.paused));
-const strikeVoice=played.at(-1);audio.spell1Hit();const strikeHit=played.at(-1);
-audio.endSpell1();assert(strikeVoice.paused&&strikeHit.paused);
+const isSfx=clip=>clip.url.includes('_SFX_');
+const voices=()=>played.filter(clip=>!isSfx(clip)&&!clip.paused&&!clip.ended);
+const complete=clip=>{clip.ended=true;clip.onended?.()};
+audio.move();assert.equal(played.length,1);audio.move();assert.equal(played.length,1);
+now=4;complete(played[0]);now=18;audio.move();assert.equal(played.length,1);
+now=19;audio.move();assert.equal(played.length,2);
+audio.runSpell();assert(played[1].paused);const runVoice=played.at(-2),runSfx=played.at(-1);
+audio.spell1();assert(runVoice.paused);assert(!runSfx.paused);
+const strikeVoice=played.at(-1);audio.spell1Hit();const strikeSfx=played.at(-1);
+assert(!strikeVoice.paused);audio.endSpell1();assert(strikeVoice.paused);
+assert(!strikeSfx.paused&&!runSfx.paused);
 let count=played.length;audio.attack('Attack1');assert.equal(played.length,count+2);
-audio.hit('Attack1');assert.equal(played.length,count+3);audio.stop();
-audio.runSpell();const expiredRun=played.slice(-2);audio.endRunSpell();
-assert(expiredRun.every(clip=>clip.paused));count=played.length;
-audio.attack('Attack2');assert.equal(played.length,count+2);audio.stop();
-console.log('Run spell → Spell1 → basic attack and unused boost expiry passed.');
+const attackVoice=played.at(-2);audio.hit('Attack1');assert(!attackVoice.paused);
+audio.attack('Attack2');assert(attackVoice.paused);assert.equal(voices().length,1);
+audio.justice();const ultimateVoice=played.at(-2);assert.equal(voices().length,1);
+count=played.length;audio.attack('Attack1');assert.equal(played.length,count+1);
+assert(isSfx(played.at(-1)));assert(!ultimateVoice.paused);
+audio.runSpell();audio.spell1();audio.spell1Hit();audio.spin();
+assert.equal(voices().length,1);assert.equal(voices()[0],ultimateVoice);
+// No action, transition, priority, or hit may pause any SFX.
+assert(played.filter(isSfx).every(clip=>!clip.paused));
+complete(ultimateVoice);audio.stop();
+// Run boost expiry only ends its voice; the cast SFX keeps its natural tail.
+audio.runSpell();const expiredVoice=played.at(-2),expiredSfx=played.at(-1);
+audio.endRunSpell();assert(expiredVoice.paused);assert(!expiredSfx.paused);
+// Interrupted movement starts its cooldown when cut off.
+now=100;audio.move();const move=played.at(-1);now=102;audio.attack('Attack1');assert(move.paused);
+audio.stop();now=116;count=played.length;audio.move();assert.equal(played.length,count);
+now=117;audio.move();assert.equal(played.length,count+1);audio.stop();
+console.log('Passed: independent full-duration SFX, single prioritized voice, equal-priority replacement, Q sequence, boost expiry, movement cooldown, and asset paths.');
