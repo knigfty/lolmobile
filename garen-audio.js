@@ -10,14 +10,15 @@ export function createGarenAudio({AudioClass=globalThis.Audio,time=()=>performan
     if(entry.movement&&cooldown)movementReadyAt=time()+15;
   }
   function stop(entry){entry.audio.pause();entry.audio.currentTime=0;finish(entry)}
-  function event(level,files,movement=false){
+  function end(group){for(const entry of [...active])if(entry.group===group)stop(entry)}
+  function event(level,files,movement=false,group=null){
     const rank=priority[level];
     if([...active].some(entry=>entry.rank>rank))return false;
     if(movement&&(time()<movementReadyAt||[...active].some(entry=>entry.movement)))return false;
     for(const entry of [...active])if(entry.rank<rank)stop(entry);
     for(const file of files){
       const audio=new AudioClass(new URL(`./Assets/Audio/Garen_Audio/${file}`,import.meta.url).href);
-      const entry={audio,rank,movement};active.add(entry);
+      const entry={audio,rank,movement,group};active.add(entry);
       audio.onended=audio.onerror=()=>finish(entry);
       try{Promise.resolve(audio.play()).catch(()=>finish(entry))}catch{finish(entry)}
     }
@@ -28,11 +29,13 @@ export function createGarenAudio({AudioClass=globalThis.Audio,time=()=>performan
     attack(name){event('attack',[pick('BasicAttack',4),pick(`SFX_${name==='Attack2'?'BasicAttack2':'BasicAttack'}_OnCast`,4)])},
     hit(name){event('attack',[pick(`SFX_${name==='Attack2'?'BasicAttack2':'BasicAttack'}_OnHit_flesh`,4)])},
     move(){event('move',[pick('Move',16)],true)},
-    runSpell(){event('spell',[pick('Q',2),pick('SFX_Q_OnCast',3)])},
-    spell1(){event('spell',[pick('QAttack',4)])},
-    spell1Hit(){event('spell',[pick('SFX_Q_Attack_OnCast_1',4)])},
+    runSpell(){event('spell',[pick('Q',2),pick('SFX_Q_OnCast',3)],false,'runSpell')},
+    spell1(){end('runSpell');event('spell',[pick('QAttack',4)],false,'spell1')},
+    spell1Hit(){event('spell',[pick('SFX_Q_Attack_OnCast_1',4)],false,'spell1')},
     spin(){event('spell',[pick('E',3),pick('SFX_E_OnCast',3)])},
     justice(){event('ultimate',[pick('R',6),pick('SFX_R_OnCast',3)])},
+    endRunSpell(){end('runSpell')},
+    endSpell1(){end('spell1')},
     stop(){for(const entry of [...active])stop(entry)}
   };
 }

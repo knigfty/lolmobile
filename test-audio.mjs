@@ -14,3 +14,15 @@ audio.spell1();assert.equal(played.length,6);audio.stop();
 for(const name of ['Attack1','Attack2']){audio.attack(name);audio.hit(name);audio.stop()}
 for(const method of ['runSpell','spell1','spell1Hit','spin','justice']){audio[method]();audio.stop()}
 console.log('Audio priorities, paired playback, interruption, cooldown, and asset paths passed.');
+
+// Deliberately leave media unfinished: animation transitions must release it.
+audio.runSpell();const runClips=played.slice(-2);
+audio.spell1();assert(runClips.every(clip=>clip.paused));
+const strikeVoice=played.at(-1);audio.spell1Hit();const strikeHit=played.at(-1);
+audio.endSpell1();assert(strikeVoice.paused&&strikeHit.paused);
+let count=played.length;audio.attack('Attack1');assert.equal(played.length,count+2);
+audio.hit('Attack1');assert.equal(played.length,count+3);audio.stop();
+audio.runSpell();const expiredRun=played.slice(-2);audio.endRunSpell();
+assert(expiredRun.every(clip=>clip.paused));count=played.length;
+audio.attack('Attack2');assert.equal(played.length,count+2);audio.stop();
+console.log('Run spell → Spell1 → basic attack and unused boost expiry passed.');

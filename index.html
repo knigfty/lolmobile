@@ -134,7 +134,7 @@ function startRunSpell(){
   play('Run_Spell1',.12);
 }
 // Boost lifetime is independent of consuming the empowered strike.
-function endRunSpell(time){runSpellArmed=false;runSpellReadyAt=time+8}
+function endRunSpell(time){garenAudio.endRunSpell();runSpellArmed=false;runSpellReadyAt=time+8}
 function damageTarget(t){
   if(t.hp<=0||!t.group.visible)return;
   const time=inputTime();
@@ -208,6 +208,7 @@ function updateRunSpell(){
       if(spell1Target.hp>0&&spell1Target.group.visible&&player.position.distanceTo(spell1Target.group.position)<=SPELL1_RANGE){damageTarget(spell1Target);garenAudio.spell1Hit()}
     }
     if(time>=spell1Until){
+      garenAudio.endSpell1();
       spell1Target=null;endRunSpell(spell1Until);
       actions.Spell1.stop();current='';
       play(movementInput().moving?'Run_Base':'Idle1_Base',0);
