@@ -285,6 +285,7 @@ function updatePendingAttack(){
 function spinPulse(){
   const hits=targets.filter(t=>t.hp>0&&t.group.visible&&Math.hypot(t.group.position.x-player.position.x,t.group.position.z-player.position.z)<=3);
   for(const t of hits)damageTarget(t);
+  if(hits.length)garenAudio.spinHit();
 }
 // Recognize the held combo every frame, regardless of which input arrived first.
 function updateAttackHold(){
@@ -438,6 +439,7 @@ function dance(){
   if(queueSpellCommand('dance')||queueAttackCommand('dance'))return;
   if(!mixer||now<lockUntil||runSpellActive()||spell1Target)return;
   dancing=true;lockUntil=Infinity;play('Dance_Base',.2,true);
+  garenAudio.dance();
 }
 const attackButton=document.getElementById('attack');
 attackButton.addEventListener('pointerdown',e=>{
@@ -468,7 +470,10 @@ addEventListener('keyup',e=>{keys.delete(e.code);if(controlMatches('attack',e.co
 addEventListener('blur',()=>{garenAudio.stop();endAttack(true);attackPointerId=null;keys.clear();stickX=stickY=0;stick.style.transform='translate(-50%,-50%)'});
 document.addEventListener('visibilitychange',()=>{if(document.hidden)garenAudio.stop()});
 function start(gltf){const model=gltf.scene;model.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;o.frustumCulled=false;o.material.side=THREE.DoubleSide}});player.add(model);mixer=new THREE.AnimationMixer(model);for(const clip of gltf.animations)actions[clip.name]=mixer.clipAction(clip);mixer.addEventListener('finished',e=>{
-  if(dancing&&current==='Dance_Base'&&e.action===actions.Dance_Base)play('Dance_Loop_BASE',.12);
+  if(dancing&&current==='Dance_Base'&&e.action===actions.Dance_Base){
+    play('Dance_Loop_BASE',.12);
+    garenAudio.danceLoop(()=>dancing&&current==='Dance_Loop_BASE');
+  }
 });play('Idle1_Base',0);document.getElementById('loading').remove();animate()}
 const loader=new GLTFLoader();const embedded=document.getElementById('embedded-model');if(embedded){try{const b=atob(embedded.textContent.trim()),a=new Uint8Array(b.length);for(let i=0;i<b.length;i++)a[i]=b.charCodeAt(i);loader.parse(a.buffer,'',start,fail)}catch(e){fail(e)}}else loader.load('./Assets/Champs/garen.glb',start,undefined,fail);
 function fail(err){console.error(err);document.getElementById('loadText').textContent='Could not load model. Open through a local web server or use the single-file edition.';document.querySelector('#loading .spin').style.display='none'}
@@ -479,6 +484,7 @@ function animate(){
   updateAttack();
   updatePendingAttack();
   if(activeSpinName&&inputTime()>=spinUntil){
+    garenAudio.spinEnd();
     actions[activeSpinName].stop();activeSpinName='';current='';lockUntil=0;
     play(movementInput().moving?'Run_Base':'Idle1_Base',0);
   }

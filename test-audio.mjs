@@ -36,3 +36,30 @@ now=100;audio.move();const move=played.at(-1);now=102;audio.attack('Attack1');as
 audio.stop();now=116;count=played.length;audio.move();assert.equal(played.length,count);
 now=117;audio.move();assert.equal(played.length,count+1);audio.stop();
 console.log('Passed: independent full-duration SFX, single prioritized voice, equal-priority replacement, Q sequence, boost expiry, movement cooldown, and asset paths.');
+
+// Spin cast layers three independent clips; hit/end SFX do not cut any off.
+count=played.length;audio.spin();assert.equal(played.length,count+3);
+assert(played.at(-1).url.endsWith('SFX_E_OnBuffActivate_2.ogg'));
+const spinClips=played.slice(-3);audio.spinHit();
+assert(played.at(-1).url.endsWith('SFX_E_hit_3.ogg'));
+audio.spinEnd();assert(played.at(-1).url.endsWith('SFX_E_OnBuffDeactivate_2.ogg'));
+assert(spinClips.every(clip=>!clip.paused));audio.stop();
+audio.dance();const intro=played.at(-1);
+assert(intro.url.endsWith('SFX_Dance_buffactivate.ogg'));
+let dancing=true;audio.danceLoop(()=>dancing);const music=played.at(-1);
+assert(music.url.endsWith('SFX_Dance_loop.ogg'));assert(!intro.paused);
+count=played.length;complete(music);assert.equal(played.length,count+1);
+const tail=played.at(-1);dancing=false;audio.attack('Attack1');assert(!tail.paused);
+count=played.length;complete(tail);assert.equal(played.length,count);audio.stop();
+// Integration: hit sound is once per pulse, outside the multiple-target loop.
+const arena=readFileSync(new URL('./index.html',import.meta.url),'utf8');
+const pulse=arena.slice(arena.indexOf('function spinPulse()'),arena.indexOf('// Recognize the held combo'));
+assert(pulse.includes('for(const t of hits)damageTarget(t);\n  if(hits.length)garenAudio.spinHit();'));
+assert(arena.includes('garenAudio.spinEnd();'));
+assert(arena.includes("garenAudio.danceLoop(()=>dancing&&current==='Dance_Loop_BASE')"));
+console.log('Passed: Spin cast/end/hit layers, once-per-pulse hit hook, dance intro/loop and full-duration cancellation tail.');
+
+audio.dance();audio.danceLoop(()=>true);const previousDance=played.at(-1);
+audio.dance();audio.danceLoop(()=>true);count=played.length;
+complete(previousDance);assert.equal(played.length,count);audio.stop();
+console.log('Passed: restarting dance cannot revive an older music loop.');

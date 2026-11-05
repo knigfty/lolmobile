@@ -2,7 +2,7 @@
 // A single voice channel replaces equal/lower priorities and rejects lower ones.
 export function createGarenAudio({AudioClass=globalThis.Audio,time=()=>performance.now()/1000,random=Math.random}={}){
   const priority={idle:0,move:1,attack:2,spell:3,ultimate:4};
-  const active=new Set();let movementReadyAt=0;
+  const active=new Set();let movementReadyAt=0,danceGeneration=0;
   const variant=(stem,count)=>`${stem}_${Math.floor(random()*count)}.ogg`;
   function finish(entry,cooldown=true){
     if(!active.delete(entry))return;
@@ -11,7 +11,7 @@ export function createGarenAudio({AudioClass=globalThis.Audio,time=()=>performan
   }
   function stop(entry){entry.audio.pause();entry.audio.currentTime=0;finish(entry)}
   function end(group){for(const entry of [...active])if(!entry.sfx&&entry.group===group)stop(entry)}
-  function event(level,files,movement=false,group=null){
+  function event(level,files,movement=false,group=null,repeat=null){
     const rank=priority[level];
     for(const file of files){
       const sfx=file.includes('_SFX_');
@@ -22,7 +22,13 @@ export function createGarenAudio({AudioClass=globalThis.Audio,time=()=>performan
       }
       const audio=new AudioClass(new URL(`./Assets/Audio/Garen_Audio/${file}`,import.meta.url).href);
       const entry={audio,rank,movement,group,sfx};active.add(entry);
-      audio.onended=audio.onerror=()=>finish(entry);
+      audio.onerror=()=>finish(entry);
+      audio.onended=()=>{
+        finish(entry);
+        // Repeat dance music only after the complete file finishes. On leaving
+        // the dance, the current one-shot keeps its tail but no new one starts.
+        if(repeat?.())event(level,[file],movement,group,repeat);
+      };
       try{Promise.resolve(audio.play()).catch(()=>finish(entry))}catch{finish(entry)}
     }
     return true;
@@ -35,7 +41,14 @@ export function createGarenAudio({AudioClass=globalThis.Audio,time=()=>performan
     runSpell(){event('spell',[pick('Q',2),pick('SFX_Q_OnCast',3)],false,'runSpell')},
     spell1(){end('runSpell');event('spell',[pick('QAttack',4)],false,'spell1')},
     spell1Hit(){event('spell',[pick('SFX_Q_Attack_OnCast_1',4)],false,'spell1')},
-    spin(){event('spell',[pick('E',3),pick('SFX_E_OnCast',3)])},
+    spin(){event('spell',[pick('E',3),pick('SFX_E_OnCast',3),pick('SFX_E_OnBuffActivate',3)])},
+    spinEnd(){event('spell',[pick('SFX_E_OnBuffDeactivate',3)])},
+    spinHit(){event('spell',[pick('SFX_E_hit',4)])},
+    dance(){danceGeneration++;event('idle',['Garen_Original_SFX_Dance_buffactivate.ogg'])},
+    danceLoop(keepPlaying){
+      const generation=danceGeneration;
+      event('idle',['Garen_Original_SFX_Dance_loop.ogg'],false,null,()=>generation===danceGeneration&&keepPlaying());
+    },
     justice(){event('ultimate',[pick('R',6),pick('SFX_R_OnCast',3)])},
     endRunSpell(){end('runSpell')},
     endSpell1(){end('spell1')},
