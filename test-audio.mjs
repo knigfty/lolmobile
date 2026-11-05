@@ -20,7 +20,7 @@ assert(!strikeSfx.paused&&!runSfx.paused);
 let count=played.length;audio.attack('Attack1');assert.equal(played.length,count+2);
 const attackVoice=played.at(-2);audio.hit('Attack1');assert(!attackVoice.paused);
 audio.attack('Attack2');assert(attackVoice.paused);assert.equal(voices().length,1);
-audio.justice();const ultimateVoice=played.at(-2);assert.equal(voices().length,1);
+audio.justice();const ultimateVoice=played.at(-3);assert.equal(voices().length,1);
 count=played.length;audio.attack('Attack1');assert.equal(played.length,count+1);
 assert(isSfx(played.at(-1)));assert(!ultimateVoice.paused);
 audio.runSpell();audio.spell1();audio.spell1Hit();audio.spin();
@@ -63,3 +63,13 @@ audio.dance();audio.danceLoop(()=>true);const previousDance=played.at(-1);
 audio.dance();audio.danceLoop(()=>true);count=played.length;
 complete(previousDance);assert.equal(played.length,count);audio.stop();
 console.log('Passed: restarting dance cannot revive an older music loop.');
+
+for(const [randomValue,variant] of [[0,0],[.5,1],[.999,2]]){
+  const rAudio=createGarenAudio({AudioClass:MockAudio,time:()=>now,random:()=>randomValue});
+  count=played.length;rAudio.justice();assert.equal(played.length,count+3);
+  assert(played.at(-1).url.endsWith(`SFX_R_OnHit_${variant}.ogg`));
+  assert(played.at(-2).url.endsWith(`SFX_R_OnCast_${variant}.ogg`));
+  assert(!isSfx(played.at(-3)));assert(played.slice(-3).every(clip=>!clip.paused));
+  rAudio.stop();
+}
+console.log('Passed: Justice layers existing voice/cast SFX with all three random OnHit variants at cast time.');
