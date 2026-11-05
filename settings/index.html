@@ -2,10 +2,85 @@
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#101d23"><title>Settings — Garen Arena</title>
 <style>
 *{box-sizing:border-box}body{margin:0;min-height:100dvh;background:radial-gradient(ellipse at top,#29463f,#101d23 75%);color:#edf5ee;font-family:system-ui,-apple-system,sans-serif;padding:calc(24px + env(safe-area-inset-top)) 22px 36px}main{max-width:520px;margin:32px auto}.brand{font-size:12px;font-weight:800;letter-spacing:2px;color:#f7d78a}a{color:#f7d78a;text-decoration:none;display:inline-block;padding:12px 0}h1{font-size:32px;margin:22px 0 28px}section{padding:26px 22px;border:1px solid #c7ddc633;border-radius:20px;background:#182d2dc9;box-shadow:0 14px 45px #0003}label{font-size:18px;font-weight:750;display:block}.value{font-size:42px;font-weight:800;color:#ffe0a2;margin:16px 0 0;font-variant-numeric:tabular-nums}.unit{font-size:14px;color:#bbd2cb}#interval{color:#deebe5;line-height:1.6}input{width:100%;margin:24px 0 12px;accent-color:#f7d78a;cursor:pointer;height:30px}.ends{display:flex;justify-content:space-between;font-size:12px;color:#bbd2cb}button{margin-top:26px;min-height:44px;padding:10px 16px;border:1px solid #f7d78a88;border-radius:10px;background:transparent;color:#f7d78a;font:inherit;cursor:pointer}a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #f7d78a;outline-offset:5px}.note{font-size:13px;color:#bbd2cb;line-height:1.6;margin-top:24px}
-</style></head><body><main><div class="brand">3D PLAYGROUND</div><a href="/">← Back to arena</a><h1>Settings</h1><section><label for="attack-speed">Attack speed</label><div class="value"><output id="speed-value" for="attack-speed">0.67</output></div><div class="unit">attacks per second</div><input id="attack-speed" type="range" min="0.67" max="2.5" step="0.01" value="0.67" aria-describedby="interval"><div class="ends"><span>0.67 · Default</span><span>2.50 · Maximum</span></div><p id="interval" aria-live="polite">One attack every 1.50 seconds</p><button id="reset" type="button">Reset to default</button></section><p class="note" id="save-status">Changes save automatically on this device and apply when you return to the arena.</p></main>
+section+section{margin-top:20px}h2{font-size:21px;margin:0 0 10px}.binding-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #c7ddc622}.binding-row span{font-size:14px}.binding-buttons{display:flex;gap:8px}.binding-buttons button{margin:0;min-width:54px;padding:9px 12px}.binding-buttons button[aria-pressed="true"]{background:#f7d78a;color:#101d23}#binding-status{min-height:44px;font-size:13px;color:#ffe0a2;line-height:1.5}</style></head><body><main><div class="brand">3D PLAYGROUND</div><a href="/">← Back to arena</a><h1>Settings</h1><section><label for="attack-speed">Attack speed</label><div class="value"><output id="speed-value" for="attack-speed">0.67</output></div><div class="unit">attacks per second</div><input id="attack-speed" type="range" min="0.67" max="2.5" step="0.01" value="0.67" aria-describedby="interval"><div class="ends"><span>0.67 · Default</span><span>2.50 · Maximum</span></div><p id="interval" aria-live="polite">One attack every 1.50 seconds</p><button id="reset" type="button">Reset to default</button></section><section><h2>Desktop controls</h2><p class="note">Select a key, then press its replacement. Movement has two editable keys. Escape cancels.</p><div id="bindings"></div><p id="binding-status" role="status" aria-live="polite"></p><button id="reset-controls" type="button">Reset controls to defaults</button></section><p class="note" id="save-status">Changes save automatically on this device and apply when you return to the arena.</p></main>
 <script>
 const slider=document.getElementById('attack-speed'),value=document.getElementById('speed-value'),interval=document.getElementById('interval');
 try{const saved=Number(localStorage.getItem('garen.attackSpeed'));if(Number.isFinite(saved)&&saved>=.67&&saved<=2.5)slider.value=saved}catch{}
 function update(save=true){const speed=Number(slider.value);value.textContent=speed.toFixed(2);slider.setAttribute('aria-valuetext',`${speed.toFixed(2)} attacks per second`);interval.textContent=`One attack every ${(speed<=.67?1.5:1/speed).toFixed(2)} seconds`;if(save)try{localStorage.setItem('garen.attackSpeed',String(speed))}catch{document.getElementById('save-status').textContent='Your browser blocked saving. Enable local storage to apply this setting in the arena.'}}
 slider.addEventListener('input',()=>update());document.getElementById('reset').addEventListener('click',()=>{slider.value='.67';update()});update(false);
+
+const CONTROL_DEFAULTS={left:['KeyA','ArrowLeft'],down:['KeyS','ArrowDown'],right:['KeyD','ArrowRight'],up:['KeyW','ArrowUp'],attack:['Space'],spin:['KeyE'],dance:['KeyR'],justice:['KeyJ']};
+const CONTROL_LABELS={left:'Move left',down:'Move down',right:'Move right',up:'Move up',attack:'Attack / Run spell (hold)',spin:'Spin',dance:'Dance',justice:'Justice'};
+const validControlCode=code=>typeof code==='string'&&/^(Key[A-Z]|Digit[0-9]|Arrow(Left|Right|Up|Down)|Space|Enter|Backspace|Delete|Home|End|PageUp|PageDown|Insert|Minus|Equal|BracketLeft|BracketRight|Backslash|Semicolon|Quote|Comma|Period|Slash|Backquote)$/.test(code);
+function loadControls(){
+  const defaults=()=>Object.fromEntries(Object.entries(CONTROL_DEFAULTS).map(([action,codes])=>[action,[...codes]]));
+  try{
+    const saved=JSON.parse(localStorage.getItem('garen.controls'));
+    if(!saved||typeof saved!=='object')return defaults();
+    const result=defaults(),used=new Set();
+    for(const action of Object.keys(result)){
+      const codes=saved[action]??result[action];
+      if(!Array.isArray(codes)||codes.length!==result[action].length||codes.some(code=>!validControlCode(code)||used.has(code)))return defaults();
+      for(const code of codes){if(used.has(code))return defaults();used.add(code)}
+      result[action]=[...codes];
+    }
+    return result;
+  }catch{return defaults()}
+}
+function controlKeyLabel(code){
+  if(code==='Space')return 'Space';
+  if(code.startsWith('Key'))return code.slice(3);
+  if(code.startsWith('Digit'))return code.slice(5);
+  return ({ArrowLeft:'←',ArrowRight:'→',ArrowUp:'↑',ArrowDown:'↓',BracketLeft:'[',BracketRight:']',Backslash:'\\',Semicolon:';',Quote:"'",Comma:',',Period:'.',Slash:'/',Backquote:'`',Minus:'-',Equal:'='})[code]||code;
+}
+let controls=loadControls();
+
+const bindingContainer=document.getElementById('bindings'),bindingStatus=document.getElementById('binding-status');
+let capturing=null;
+function renderBindings(){
+  bindingContainer.replaceChildren();
+  for(const [action,codes] of Object.entries(controls)){
+    const row=document.createElement('div');row.className='binding-row';
+    const label=document.createElement('span');label.textContent=CONTROL_LABELS[action];row.append(label);
+    const buttons=document.createElement('div');buttons.className='binding-buttons';
+    codes.forEach((code,index)=>{
+      const button=document.createElement('button');button.type='button';button.textContent=controlKeyLabel(code);
+      button.setAttribute('aria-label',CONTROL_LABELS[action]+(index?' alternate':' primary')+': '+controlKeyLabel(code));
+      button.setAttribute('aria-pressed',String(capturing?.action===action&&capturing?.index===index));
+      button.addEventListener('click',()=>{
+        capturing={action,index};renderBindings();
+        bindingContainer.querySelector('[aria-pressed="true"]').focus();
+        bindingStatus.textContent='Press a new key for '+CONTROL_LABELS[action]+'. Escape cancels.';
+      });
+      buttons.append(button);
+    });
+    row.append(buttons);bindingContainer.append(row);
+  }
+}
+function saveControls(){
+  try{localStorage.setItem('garen.controls',JSON.stringify(controls));return true}
+  catch{bindingStatus.textContent='Your browser blocked saving. Enable local storage to apply controls.';return false}
+}
+addEventListener('keydown',event=>{
+  if(!capturing)return;
+  event.preventDefault();event.stopPropagation();
+  if(event.code==='Escape'){capturing=null;renderBindings();bindingStatus.textContent='Key change cancelled.';return}
+  if(event.repeat)return;
+  if(event.ctrlKey||event.altKey||event.metaKey||event.shiftKey||!validControlCode(event.code)){
+    bindingStatus.textContent='Choose a single letter, number, arrow, punctuation, or navigation key without modifiers.';return;
+  }
+  const {action,index}=capturing;
+  const conflict=Object.keys(controls).find(name=>controls[name].some((code,i)=>code===event.code&&(name!==action||i!==index)));
+  if(conflict){bindingStatus.textContent=controlKeyLabel(event.code)+' is already assigned to '+CONTROL_LABELS[conflict]+'. Choose another key.';return}
+  const previous=controls[action][index];controls[action][index]=event.code;
+  if(!saveControls()){controls[action][index]=previous;return}
+  capturing=null;renderBindings();bindingStatus.textContent='Saved. The arena controls hint will update when you return.';
+},true);
+document.getElementById('reset-controls').addEventListener('click',()=>{
+  const previous=controls;controls=Object.fromEntries(Object.entries(CONTROL_DEFAULTS).map(([action,codes])=>[action,[...codes]]));
+  if(!saveControls()){controls=previous;return}
+  capturing=null;renderBindings();bindingStatus.textContent='Default controls restored.';
+});
+addEventListener('blur',()=>{if(capturing){capturing=null;renderBindings();bindingStatus.textContent='Key change cancelled.'}});
+renderBindings();
 </script></body></html>
