@@ -198,6 +198,7 @@ function queueSpellCommand(command){
 }
 function cancelDance(){
   if(!dancing)return;
+  garenAudio.endDance();
   dancing=false;lockUntil=0;mixer.stopAllAction();current='';play('Idle1_Base',0);
 }
 function updateRunSpell(){
@@ -355,6 +356,7 @@ function cancelActionForMovement(newCommand=false){
   }
   if(now>=lockUntil||isSpinAnimation(current)||current==='Spell4_Base')return;
   if(current.startsWith('Attack')&&!newCommand)return;
+  if(dancing)garenAudio.endDance();
   lockUntil=0;dancing=false;
   clearTimeout(damageTimer);
   damageTimer=null;
@@ -437,7 +439,8 @@ function spin(){
 function dance(){
   attackRequested=false;
   if(queueSpellCommand('dance')||queueAttackCommand('dance'))return;
-  if(!mixer||now<lockUntil||runSpellActive()||spell1Target)return;
+  if(!mixer||(now<lockUntil&&!dancing)||runSpellActive()||spell1Target)return;
+  cancelDance();
   dancing=true;lockUntil=Infinity;play('Dance_Base',.2,true);
   garenAudio.dance();
 }

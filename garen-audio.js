@@ -1,4 +1,4 @@
-// SFX are independent one-shots and always play to completion.
+// Combat SFX are independent one-shots. Dance audio uses the voice channel.
 // A single voice channel replaces equal/lower priorities and rejects lower ones.
 export function createGarenAudio({AudioClass=globalThis.Audio,time=()=>performance.now()/1000,random=Math.random}={}){
   const priority={idle:0,move:1,attack:2,spell:3,ultimate:4};
@@ -14,7 +14,7 @@ export function createGarenAudio({AudioClass=globalThis.Audio,time=()=>performan
   function event(level,files,movement=false,group=null,repeat=null){
     const rank=priority[level];
     for(const file of files){
-      const sfx=file.includes('_SFX_');
+      const sfx=file.includes('_SFX_')&&group!=='dance';
       if(!sfx){
         if([...active].some(entry=>!entry.sfx&&entry.rank>rank))continue;
         if(movement&&(time()<movementReadyAt||[...active].some(entry=>entry.movement)))continue;
@@ -25,8 +25,7 @@ export function createGarenAudio({AudioClass=globalThis.Audio,time=()=>performan
       audio.onerror=()=>finish(entry);
       audio.onended=()=>{
         finish(entry);
-        // Repeat dance music only after the complete file finishes. On leaving
-        // the dance, the current one-shot keeps its tail but no new one starts.
+        // Repeat dance music only while the same dance remains active.
         if(repeat?.())event(level,[file],movement,group,repeat);
       };
       try{Promise.resolve(audio.play()).catch(()=>finish(entry))}catch{finish(entry)}
@@ -44,11 +43,13 @@ export function createGarenAudio({AudioClass=globalThis.Audio,time=()=>performan
     spin(){event('spell',[pick('E',3),pick('SFX_E_OnCast',3),pick('SFX_E_OnBuffActivate',3)])},
     spinEnd(){event('spell',[pick('SFX_E_OnBuffDeactivate',3)])},
     spinHit(){event('spell',[pick('SFX_E_hit',4)])},
-    dance(){danceGeneration++;event('idle',['Garen_Original_SFX_Dance_buffactivate.ogg'])},
+    dance(){danceGeneration++;end('dance');event('idle',['Garen_Original_SFX_Dance_buffactivate.ogg'],false,'dance')},
     danceLoop(keepPlaying){
       const generation=danceGeneration;
-      event('idle',['Garen_Original_SFX_Dance_loop.ogg'],false,null,()=>generation===danceGeneration&&keepPlaying());
+      end('dance');
+      event('idle',['Garen_Original_SFX_Dance_loop.ogg'],false,'dance',()=>generation===danceGeneration&&keepPlaying());
     },
+    endDance(){danceGeneration++;end('dance')},
     justice(){event('ultimate',[pick('R',6),pick('SFX_R_OnCast',3),pick('SFX_R_OnHit',3)])},
     endRunSpell(){end('runSpell')},
     endSpell1(){end('spell1')},

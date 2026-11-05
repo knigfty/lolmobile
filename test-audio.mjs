@@ -47,9 +47,9 @@ assert(spinClips.every(clip=>!clip.paused));audio.stop();
 audio.dance();const intro=played.at(-1);
 assert(intro.url.endsWith('SFX_Dance_buffactivate.ogg'));
 let dancing=true;audio.danceLoop(()=>dancing);const music=played.at(-1);
-assert(music.url.endsWith('SFX_Dance_loop.ogg'));assert(!intro.paused);
+assert(music.url.endsWith('SFX_Dance_loop.ogg'));assert(intro.paused);
 count=played.length;complete(music);assert.equal(played.length,count+1);
-const tail=played.at(-1);dancing=false;audio.attack('Attack1');assert(!tail.paused);
+const tail=played.at(-1);dancing=false;audio.endDance();assert(tail.paused);audio.attack('Attack1');
 count=played.length;complete(tail);assert.equal(played.length,count);audio.stop();
 // Integration: hit sound is once per pulse, outside the multiple-target loop.
 const arena=readFileSync(new URL('./index.html',import.meta.url),'utf8');
@@ -57,11 +57,12 @@ const pulse=arena.slice(arena.indexOf('function spinPulse()'),arena.indexOf('// 
 assert(pulse.includes('for(const t of hits)damageTarget(t);\n  if(hits.length)garenAudio.spinHit();'));
 assert(arena.includes('garenAudio.spinEnd();'));
 assert(arena.includes("garenAudio.danceLoop(()=>dancing&&current==='Dance_Loop_BASE')"));
-console.log('Passed: Spin cast/end/hit layers, once-per-pulse hit hook, dance intro/loop and full-duration cancellation tail.');
+console.log('Passed: Spin cast/end/hit layers, once-per-pulse hit hook, dance intro/loop and immediate cancellation.');
 
 audio.dance();audio.danceLoop(()=>true);const previousDance=played.at(-1);
+const staleEnded=previousDance.onended;
 audio.dance();audio.danceLoop(()=>true);count=played.length;
-complete(previousDance);assert.equal(played.length,count);audio.stop();
+assert(previousDance.paused);staleEnded();assert.equal(played.length,count);audio.stop();
 console.log('Passed: restarting dance cannot revive an older music loop.');
 
 for(const [randomValue,variant] of [[0,0],[.5,1],[.999,2]]){
@@ -73,3 +74,12 @@ for(const [randomValue,variant] of [[0,0],[.5,1],[.999,2]]){
   rAudio.stop();
 }
 console.log('Passed: Justice layers existing voice/cast SFX with all three random OnHit variants at cast time.');
+
+// Repeated commands cut off intro or loop and start a fresh intro.
+audio.dance();const firstIntro=played.at(-1);audio.dance();assert(firstIntro.paused);
+assert(played.at(-1).url.endsWith('SFX_Dance_buffactivate.ogg'));
+audio.danceLoop(()=>true);const oldLoop=played.at(-1);audio.dance();assert(oldLoop.paused);
+audio.endDance();assert(played.at(-1).paused);audio.stop();
+assert(arena.includes('  cancelDance();\n  dancing=true;'));
+assert(arena.includes('if(dancing)garenAudio.endDance();'));
+console.log('Passed: dance restart, intro/loop interruption, and movement/action cancellation hooks.');
