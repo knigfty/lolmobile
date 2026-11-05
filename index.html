@@ -60,7 +60,7 @@ function updateControlsHint(){
 updateControlsHint();
 addEventListener('pageshow',()=>{controls=loadControls();moveKeys.clear();for(const action of ['left','down','right','up'])for(const code of controls[action])moveKeys.add(code);keys.clear();updateControlsHint()});
 
-const ATTACK_HOLD_MS=250;
+const ATTACK_HOLD_MS=120;
 const BASE_ATTACK_CONE_COS=Math.cos(135*Math.PI/360),JUSTICE_RANGE=800;
 const ATTACK_BLEND_TIME=.12;
 let animationBlend=null,attackIdleBlend=false;
@@ -75,7 +75,8 @@ let attackReadyAt=0,attackRequested=false;
 const SPIN_DURATION=3,SPIN_COUNT=7;
 let activeSpinName='',spinStartedAt=0,spinUntil=0;
 const isSpinAnimation=name=>name==='Spell3_0';
-let attackHoldTimer=null,attackHolding=false,attackWasHold=false,attackPointerId=null;
+let attackHolding=false,attackWasHold=false,attackPointerId=null;
+let attackHeldSince=0,runSpellHoldConsumed=false;
 let runSpellUntil=0,runSpellReadyAt=0,runSpellArmed=false;
 let spell1Target=null,spell1Until=0,spell1HitAt=0,spell1Hit=false,spell1StartedAt=0,pendingSpellCommand=null;
 const SPELL1_RANGE=3,SPELL1_CONE_COS=Math.cos(Math.PI/4);
@@ -277,23 +278,29 @@ function spinPulse(){
   const hits=targets.filter(t=>t.hp>0&&t.group.visible&&Math.hypot(t.group.position.x-player.position.x,t.group.position.z-player.position.z)<=3);
   for(const t of hits)damageTarget(t);
 }
+// Recognize the held combo every frame, regardless of which input arrived first.
+function updateAttackHold(){
+  if(!attackHolding||runSpellHoldConsumed||inputTime()-attackHeldSince<ATTACK_HOLD_MS/1000)return;
+  if(!movementInput().moving)return;
+  if(runSpellActive()||spell1Target){runSpellHoldConsumed=true;return}
+  // Keep the held command buffered until movement is allowed.
+  if(!mixer||now<lockUntil)return;
+  runSpellHoldConsumed=true;attackWasHold=true;
+  startRunSpell();
+}
 function beginAttack(){
   if(attackHolding)return;
   cancelDance();
   attackHolding=true;attackWasHold=false;
+  attackHeldSince=inputTime();runSpellHoldConsumed=false;
   if(spell1Target||activeAttackName){attackWasHold=true;attack();return}
-  if(!movementInput().moving){attackWasHold=true;attack();return}
-  attackHoldTimer=setTimeout(()=>{
-    attackHoldTimer=null;
-    if(!attackHolding)return;
-    attackWasHold=true;
-    startRunSpell();
-  },ATTACK_HOLD_MS);
+  if(!movementInput().moving){attackWasHold=true;attack()}
 }
 function endAttack(cancelled=false){
-  clearTimeout(attackHoldTimer);attackHoldTimer=null;
+  // Recognize a completed hold even if release lands between animation frames.
+  if(!cancelled)updateAttackHold();
   const tap=attackHolding&&!attackWasHold&&!cancelled;
-  attackHolding=false;attackWasHold=false;
+  attackHolding=false;attackWasHold=false;runSpellHoldConsumed=false;
   if(tap)attack();
 }
 function toast(msg){const el=document.getElementById('message');el.textContent=msg;el.style.opacity='1';clearTimeout(toastTimeout);toastTimeout=setTimeout(()=>el.style.opacity='0',750)}
@@ -465,6 +472,7 @@ function animate(){
   let {x,y,moving}=movementInput();
   const len=Math.hypot(x,y);
   if(moving)cancelActionForMovement();
+  updateAttackHold();
   if(moving&&(now>=lockUntil||isSpinAnimation(current))){
     x/=Math.max(1,len);y/=Math.max(1,len);
     const speed=4.5*(inputTime()<runSpellUntil?1.35:1)*spell1SpeedMultiplier();
