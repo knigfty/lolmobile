@@ -9,7 +9,7 @@ try{const saved=Number(localStorage.getItem('garen.attackSpeed'));if(Number.isFi
 function update(save=true){const speed=Number(slider.value);value.textContent=speed.toFixed(2);slider.setAttribute('aria-valuetext',`${speed.toFixed(2)} attacks per second`);interval.textContent=`One attack every ${(speed<=.67?1.5:1/speed).toFixed(2)} seconds`;if(save)try{localStorage.setItem('garen.attackSpeed',String(speed))}catch{document.getElementById('save-status').textContent='Your browser blocked saving. Enable local storage to apply this setting in the arena.'}}
 slider.addEventListener('input',()=>update());document.getElementById('reset').addEventListener('click',()=>{slider.value='.67';update()});update(false);
 
-const CONTROL_DEFAULTS={left:['KeyA','ArrowLeft'],down:['KeyS','ArrowDown'],right:['KeyD','ArrowRight'],up:['KeyW','ArrowUp'],attack:['Space'],spin:['KeyE'],dance:['KeyR'],justice:['KeyJ']};
+const CONTROL_DEFAULTS={left:['KeyA','ArrowLeft'],down:['KeyS','ArrowDown'],right:['KeyD','ArrowRight'],up:['KeyW','ArrowUp'],attack:['Space'],spin:['KeyE'],dance:['KeyF'],justice:['KeyR']};
 const CONTROL_LABELS={left:'Move left',down:'Move down',right:'Move right',up:'Move up',attack:'Attack / Run spell (hold)',spin:'Spin',dance:'Dance',justice:'Justice'};
 const validControlCode=code=>typeof code==='string'&&/^(Key[A-Z]|Digit[0-9]|Arrow(Left|Right|Up|Down)|Space|Enter|Backspace|Delete|Home|End|PageUp|PageDown|Insert|Minus|Equal|BracketLeft|BracketRight|Backslash|Semicolon|Quote|Comma|Period|Slash|Backquote)$/.test(code);
 function loadControls(){
