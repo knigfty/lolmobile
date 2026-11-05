@@ -1,6 +1,6 @@
 <!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"><meta name="theme-color" content="#101d23"><title>Garen — Arena Test</title>
 <style>
-*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#101d23;color:#fff;font-family:system-ui,-apple-system,Segoe UI,sans-serif;touch-action:none;user-select:none}canvas{display:block;touch-action:none}#ui{position:fixed;inset:0;pointer-events:none}#top{position:absolute;top:env(safe-area-inset-top,0px);left:0;right:0;display:flex;justify-content:space-between;align-items:flex-start;padding:15px 17px;gap:12px}#brand{font-size:12px;letter-spacing:2px;color:#f7d78a;font-weight:800}#title{font-size:21px;font-weight:900;line-height:1.15;margin-top:3px;text-shadow:0 2px 8px #0009}#sub{font-size:11px;color:#d5e5e2;margin-top:5px}#stats{text-align:right;background:#102027b8;border:1px solid #b6d5c02d;border-radius:12px;padding:9px 12px;font-size:12px;line-height:1.65}#stats strong{color:#ffe3a0}#message{position:absolute;top:23%;left:50%;transform:translateX(-50%);font-size:15px;font-weight:800;color:#ffdfa0;text-shadow:0 2px 7px #000;opacity:0;transition:opacity .18s;white-space:nowrap}#bottom{position:absolute;bottom:calc(24px + env(safe-area-inset-bottom,0px));left:0;right:0;display:flex;align-items:flex-end;justify-content:space-between;padding:0 22px;gap:20px}#joystick{pointer-events:auto;width:136px;height:136px;border-radius:50%;background:#e5f4e010;border:2px solid #e7f6e34d;position:relative;box-shadow:inset 0 0 28px #d8f6e00b}#stick{position:absolute;left:50%;top:50%;width:62px;height:62px;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle at 30% 25%,#b6e8ca80,#4b847c80);border:2px solid #e2fff0aa;box-shadow:0 5px 15px #0006}#buttons{display:grid;grid-template-columns:repeat(2,68px);gap:10px;pointer-events:auto;align-items:end}.action{width:68px;height:68px;border-radius:50%;border:2px solid #f7e0a2a0;background:radial-gradient(circle at 35% 25%,#9d774d,#403525);color:#fff5d7;font-weight:900;font-size:12px;box-shadow:0 5px 18px #0008;touch-action:none}.action:active,.action.active{filter:brightness(1.5);transform:scale(.95)}#attack{width:82px;height:82px;grid-row:2/4;grid-column:2;background:radial-gradient(circle at 30% 20%,#e4b56b,#8b4a2e);font-size:15px}#justice{grid-column:2;grid-row:1;font-size:10px;background:radial-gradient(circle at 30% 20%,#d1be70,#63552a)}#dance{grid-column:1;grid-row:2;background:radial-gradient(circle at 30% 20%,#528d8a,#26494e);border-color:#8ed3c5}#help{position:absolute;bottom:5px;left:50%;transform:translateX(-50%);font-size:10px;color:#e5eee9aa;white-space:nowrap}#loading{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:15px;background:linear-gradient(145deg,#0e1e24,#263b35);z-index:10;text-align:center;padding:20px}#loading h1{margin:0;color:#ffe1a0;letter-spacing:2px}#loading p{margin:0;color:#cbdcd5;font-size:13px}#loading .spin{width:34px;height:34px;border:3px solid #fff3;border-top-color:#ffda89;border-radius:50%;animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}@media(max-width:370px){#joystick{width:116px;height:116px}#bottom{padding:0 12px}#buttons{grid-template-columns:repeat(2,61px)}.action{width:61px;height:61px}#attack{width:74px;height:74px}}@media(min-width:800px){#bottom{max-width:950px;margin:auto}#help{font-size:12px}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#101d23;color:#fff;font-family:system-ui,-apple-system,Segoe UI,sans-serif;touch-action:none;user-select:none}canvas{display:block;touch-action:none}#ui{position:fixed;inset:0;pointer-events:none}#top{position:absolute;top:env(safe-area-inset-top,0px);left:0;right:0;display:flex;justify-content:space-between;align-items:flex-start;padding:15px 17px;gap:12px}#brand{font-size:12px;letter-spacing:2px;color:#f7d78a;font-weight:800}#title{font-size:21px;font-weight:900;line-height:1.15;margin-top:3px;text-shadow:0 2px 8px #0009}#sub{font-size:11px;color:#d5e5e2;margin-top:5px}#stats{text-align:right;background:#102027b8;border:1px solid #b6d5c02d;border-radius:12px;padding:9px 12px;font-size:12px;line-height:1.65}#stats strong{color:#ffe3a0}#message{position:absolute;top:23%;left:50%;transform:translateX(-50%);font-size:15px;font-weight:800;color:#ffdfa0;text-shadow:0 2px 7px #000;opacity:0;transition:opacity .18s;white-space:nowrap}#bottom{position:absolute;bottom:calc(24px + env(safe-area-inset-bottom,0px));left:0;right:0;display:flex;align-items:flex-end;justify-content:space-between;padding:0 22px;gap:20px}#joystick{pointer-events:auto;width:136px;height:136px;border-radius:50%;background:#e5f4e010;border:2px solid #e7f6e34d;position:relative;box-shadow:inset 0 0 28px #d8f6e00b}#stick{position:absolute;left:50%;top:50%;width:62px;height:62px;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle at 30% 25%,#b6e8ca80,#4b847c80);border:2px solid #e2fff0aa;box-shadow:0 5px 15px #0006}#buttons{display:grid;grid-template-columns:repeat(2,68px);gap:10px;pointer-events:auto;align-items:end}.action{width:68px;height:68px;border-radius:50%;border:2px solid #f7e0a2a0;background:radial-gradient(circle at 35% 25%,#9d774d,#403525);color:#fff5d7;font-weight:900;font-size:12px;box-shadow:0 5px 18px #0008;touch-action:none}.action:active,.action.active{filter:brightness(1.5);transform:scale(.95)}#attack{width:82px;height:82px;grid-row:2/4;grid-column:2;background:radial-gradient(circle at 30% 20%,#e4b56b,#8b4a2e);font-size:15px}#justice{grid-column:2;grid-row:1;font-size:10px;background:radial-gradient(circle at 30% 20%,#d1be70,#63552a)}#dance{grid-column:1;grid-row:2;background:radial-gradient(circle at 30% 20%,#528d8a,#26494e);border-color:#8ed3c5}#help{position:absolute;bottom:5px;left:50%;transform:translateX(-50%);width:calc(100% - 24px);text-align:center;font-size:10px;color:#e5eee9aa;white-space:normal}#loading{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:15px;background:linear-gradient(145deg,#0e1e24,#263b35);z-index:10;text-align:center;padding:20px}#loading h1{margin:0;color:#ffe1a0;letter-spacing:2px}#loading p{margin:0;color:#cbdcd5;font-size:13px}#loading .spin{width:34px;height:34px;border:3px solid #fff3;border-top-color:#ffda89;border-radius:50%;animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}@media(max-width:370px){#joystick{width:116px;height:116px}#bottom{padding:0 12px}#buttons{grid-template-columns:repeat(2,61px)}.action{width:61px;height:61px}#attack{width:74px;height:74px}}@media(min-width:800px){#bottom{max-width:950px;margin:auto}#help{font-size:12px}}
 #settings-link{pointer-events:auto;display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;margin-top:6px;border:1px solid #f7d78a66;border-radius:12px;background:#102027a8;color:#f7d78a}#settings-link:focus-visible{outline:3px solid #fff;outline-offset:3px}</style>
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"}}</script></head><body>
 <div id="loading"><div class="spin"></div><h1>GAREN ARENA</h1><p id="loadText">Preparing your character...</p></div>
@@ -23,7 +23,43 @@ const rubble=new THREE.Group();visual.add(rubble);rubble.visible=false;
 for(let i=0;i<8;i++){const piece=new THREE.Mesh(new THREE.BoxGeometry(.22+(i%3)*.06,.2,.24),targetMat.clone());piece.castShadow=true;rubble.add(piece)}
 targets.push({group,visual,base,body,head,rubble,healthBar,green,maxHp:10,hp:10,cool:0,hitboxRadius:.8,lastHit:-Infinity,hurtX:0,hurtZ:0,destroyAt:null})}
 const player=new THREE.Group();scene.add(player);let mixer,actions={},current='',lockUntil=0,hitCount=0;const clock=new THREE.Clock();const keys=new Set();let stickX=0,stickY=0,attackIndex=0,now=0;const stateEl=document.getElementById('state'),hitsEl=document.getElementById('hits');let toastTimeout,damageTimer=null;
-const moveKeys=new Set(['KeyA','KeyD','KeyW','KeyS','ArrowLeft','ArrowRight','ArrowUp','ArrowDown']);
+
+const CONTROL_DEFAULTS={left:['KeyA','ArrowLeft'],down:['KeyS','ArrowDown'],right:['KeyD','ArrowRight'],up:['KeyW','ArrowUp'],attack:['Space'],spin:['KeyE'],dance:['KeyR'],justice:['KeyJ']};
+const CONTROL_LABELS={left:'Move left',down:'Move down',right:'Move right',up:'Move up',attack:'Attack / Run spell (hold)',spin:'Spin',dance:'Dance',justice:'Justice'};
+const validControlCode=code=>typeof code==='string'&&/^(Key[A-Z]|Digit[0-9]|Arrow(Left|Right|Up|Down)|Space|Enter|Backspace|Delete|Home|End|PageUp|PageDown|Insert|Minus|Equal|BracketLeft|BracketRight|Backslash|Semicolon|Quote|Comma|Period|Slash|Backquote)$/.test(code);
+function loadControls(){
+  const defaults=()=>Object.fromEntries(Object.entries(CONTROL_DEFAULTS).map(([action,codes])=>[action,[...codes]]));
+  try{
+    const saved=JSON.parse(localStorage.getItem('garen.controls'));
+    if(!saved||typeof saved!=='object')return defaults();
+    const result=defaults(),used=new Set();
+    for(const action of Object.keys(result)){
+      const codes=saved[action]??result[action];
+      if(!Array.isArray(codes)||codes.length!==result[action].length||codes.some(code=>!validControlCode(code)||used.has(code)))return defaults();
+      for(const code of codes){if(used.has(code))return defaults();used.add(code)}
+      result[action]=[...codes];
+    }
+    return result;
+  }catch{return defaults()}
+}
+function controlKeyLabel(code){
+  if(code==='Space')return 'Space';
+  if(code.startsWith('Key'))return code.slice(3);
+  if(code.startsWith('Digit'))return code.slice(5);
+  return ({ArrowLeft:'←',ArrowRight:'→',ArrowUp:'↑',ArrowDown:'↓',BracketLeft:'[',BracketRight:']',Backslash:'\\',Semicolon:';',Quote:"'",Comma:',',Period:'.',Slash:'/',Backquote:'`',Minus:'-',Equal:'='})[code]||code;
+}
+let controls=loadControls();
+
+const moveKeys=new Set(['left','down','right','up'].flatMap(action=>controls[action]));
+const controlHeld=action=>controls[action].some(code=>keys.has(code));
+const controlMatches=(action,code)=>controls[action].includes(code);
+function updateControlsHint(){
+  const show=action=>controls[action].map(controlKeyLabel).join(' / ');
+  document.getElementById('help').textContent='Desktop: '+['up','left','down','right'].map(action=>show(action)+' '+action).join(' · ')+' · '+show('attack')+' attack (hold: run spell) · '+show('spin')+' spin · '+show('justice')+' justice · '+show('dance')+' dance';
+}
+updateControlsHint();
+addEventListener('pageshow',()=>{controls=loadControls();moveKeys.clear();for(const action of ['left','down','right','up'])for(const code of controls[action])moveKeys.add(code);keys.clear();updateControlsHint()});
+
 const ATTACK_HOLD_MS=250;
 const BASE_ATTACK_CONE_COS=Math.cos(135*Math.PI/360),JUSTICE_RANGE=800;
 const ATTACK_BLEND_TIME=.12;
@@ -47,10 +83,10 @@ const inputTime=()=>performance.now()/1000;
 const runSpellActive=()=>runSpellArmed&&inputTime()<runSpellUntil;
 function movementInput(){
   let x=stickX,y=stickY;
-  if(keys.has('KeyA')||keys.has('ArrowLeft'))x-=1;
-  if(keys.has('KeyD')||keys.has('ArrowRight'))x+=1;
-  if(keys.has('KeyW')||keys.has('ArrowUp'))y-=1;
-  if(keys.has('KeyS')||keys.has('ArrowDown'))y+=1;
+  if(controlHeld('left'))x-=1;
+  if(controlHeld('right'))x+=1;
+  if(controlHeld('up'))y-=1;
+  if(controlHeld('down'))y+=1;
   return {x,y,moving:Math.hypot(x,y)>.14};
 }
 // Circle colliders include each dummy's widest base and the champion's body.
@@ -397,7 +433,20 @@ document.getElementById('justice').addEventListener('pointerdown',e=>{e.preventD
 document.getElementById('skill').addEventListener('pointerdown',e=>{e.preventDefault();spin()});document.getElementById('dance').addEventListener('pointerdown',e=>{e.preventDefault();dance()});
 const joy=document.getElementById('joystick'),stick=document.getElementById('stick');let pointerId=null;function updateStick(e){const r=joy.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,max=r.width*.32;let x=(e.clientX-cx)/max,y=(e.clientY-cy)/max;const l=Math.hypot(x,y);if(l>1){x/=l;y/=l}const newCommand=stickX===0&&stickY===0&&l>0;stickX=x;stickY=y;if(l>0)cancelActionForMovement(newCommand);stick.style.transform=`translate(calc(-50% + ${x*max}px),calc(-50% + ${y*max}px))`}
 joy.addEventListener('pointerdown',e=>{e.preventDefault();pointerId=e.pointerId;joy.setPointerCapture(pointerId);updateStick(e)});joy.addEventListener('pointermove',e=>{if(e.pointerId===pointerId)updateStick(e)});function resetStick(e){if(e.pointerId!==pointerId)return;pointerId=null;stickX=stickY=0;stick.style.transform='translate(-50%,-50%)'}joy.addEventListener('pointerup',resetStick);joy.addEventListener('pointercancel',resetStick);
-addEventListener('keydown',e=>{if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault();const newCommand=!e.repeat&&!keys.has(e.code);keys.add(e.code);if(moveKeys.has(e.code))cancelActionForMovement(newCommand);if(e.repeat)return;if(e.code==='Space')beginAttack();if(e.code==='KeyE')spin();if(e.code==='KeyR')dance()});addEventListener('keyup',e=>{keys.delete(e.code);if(e.code==='Space')endAttack()});addEventListener('blur',()=>{endAttack(true);attackPointerId=null;keys.clear();stickX=stickY=0;stick.style.transform='translate(-50%,-50%)'});
+addEventListener('keydown',e=>{
+  if(e.ctrlKey||e.metaKey||e.altKey)return;
+  if(!Object.values(controls).some(codes=>codes.includes(e.code)))return;
+  e.preventDefault();
+  const newCommand=!e.repeat&&!keys.has(e.code);keys.add(e.code);
+  if(moveKeys.has(e.code))cancelActionForMovement(newCommand);
+  if(e.repeat)return;
+  if(controlMatches('attack',e.code))beginAttack();
+  if(controlMatches('spin',e.code))spin();
+  if(controlMatches('dance',e.code))dance();
+  if(controlMatches('justice',e.code))justice();
+});
+addEventListener('keyup',e=>{keys.delete(e.code);if(controlMatches('attack',e.code)){e.preventDefault();endAttack()}});
+addEventListener('blur',()=>{endAttack(true);attackPointerId=null;keys.clear();stickX=stickY=0;stick.style.transform='translate(-50%,-50%)'});
 function start(gltf){const model=gltf.scene;model.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;o.frustumCulled=false;o.material.side=THREE.DoubleSide}});player.add(model);mixer=new THREE.AnimationMixer(model);for(const clip of gltf.animations)actions[clip.name]=mixer.clipAction(clip);mixer.addEventListener('finished',e=>{
   if(dancing&&current==='Dance_Base'&&e.action===actions.Dance_Base)play('Dance_Loop_BASE',.12);
 });play('Idle1_Base',0);document.getElementById('loading').remove();animate()}
