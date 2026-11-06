@@ -512,10 +512,10 @@ let loadingAsset='map';
 async function loadGame(){
   try{
     document.getElementById('loadText').textContent='Loading Demacian citadel…';
-    const layoutResponse=await fetch('./Assets/Map/Metadata/citadel-layout.json?v=1');
+    const layoutResponse=await fetch('./Assets/Map/Metadata/citadel-layout.json?v=2');
     if(!layoutResponse.ok)throw new Error('Citadel collision layout could not be loaded');
     mapLayout=await layoutResponse.json();
-    const map=await loader.loadAsync('./Assets/Map/Models/demacian_citadel.glb?v=1');
+    const map=await loader.loadAsync('./Assets/Map/Models/demacian_citadel.glb?v=2');
     map.scene.name='DemacianCitadel';
     map.scene.traverse(object=>{
       if(object.isMesh){
@@ -523,7 +523,7 @@ async function loadGame(){
         const part=object.name.split('__')[0];
         object.castShadow=!['OutsideMeadow','DistantMountains','CourtyardPaving','MarbleAvenues','Gardens','Water','TrainingInlays','Windows','RoyalBanners','BannerTrim'].includes(part);
         const groupName=object.name.split('__')[1];
-        if(groupName||['PalaceWings','WingCornices','PalacePilasters','HallPilasters','HallLancets','FlyingButtresses','Portal','PortalColumns','PortalLintel','PortalPediment','ClosedGate','GateBars','GateLintel'].includes(part)){
+        if(groupName||['HallWalls','PalaceWings','WingCornices','PalacePilasters','HallPilasters','HallLancets','FlyingButtresses','Portal','PortalColumns','PortalLintel','PortalPediment','ClosedGate','GateBars','GateLintel'].includes(part)){
           object.material=object.material.clone();
           const key=groupName||part;
           if(!occlusionGroups.has(key))occlusionGroups.set(key,{meshes:[],hidden:false});
@@ -624,6 +624,9 @@ function animate(){
     if(material.transparent!==transparent){material.transparent=transparent;material.needsUpdate=true}
     material.depthWrite=!transparent;
   }
+  // Cut away the hall roof when inside so the playable interior stays visible.
+  const insideHall=Math.hypot(player.position.x,player.position.z+22)<10.5;
+  for(const object of cameraOccluders)if(object.userData.occlusionGroup==='HallRoof')object.visible=!insideHall;
   renderer.render(scene,camera);
 }
 addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,2))});

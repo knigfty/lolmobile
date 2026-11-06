@@ -121,7 +121,44 @@ box('ClosedGate',0,3.2,37.05,7,6.4,.18,9)
 for x in np.linspace(-3.3,3.3,12):box('GateBars',float(x),3.2,36.9,.08,6.4,.12,3)
 box('GateLintel',0,6.7,36.9,8,.6,.8,1)
 # Central great hall: circular mass, layered buttresses, immense blue dome.
-tower(0,-22,11,21)
+# Hollow great hall with one southern entrance; wall footprints form a continuous ring.
+for i in range(128):
+ a=i*math.tau/128;b=(i+1)*math.tau/128;mid=(a+b)/2
+ doorway=abs(11*math.cos(mid))<2.15 and math.sin(mid)>0
+ for radius,reverse in [(11,False),(10.25,True)]:
+  low=8.8 if doorway else 0
+  pts=[(radius*math.cos(a),low,-22+radius*math.sin(a)),(radius*math.cos(a),21,-22+radius*math.sin(a)),(radius*math.cos(b),21,-22+radius*math.sin(b)),(radius*math.cos(b),low,-22+radius*math.sin(b))]
+  if reverse:pts.reverse()
+  quad('HallWalls',*pts,0)
+ if not doorway:obstacles.append({'type':'circle','x':10.65*math.cos(mid),'z':-22+10.65*math.sin(mid),'radius':.62})
+SECTION='HallRoof';dome(0,-22,21,11.7,7.5);SECTION=''
+plane_tiles('HallFloor',0,-22,20,20,.025,14)
+ring('HallMosaic',0,-22,6.8,7.2,.035,2)
+ring('HallMosaic',0,-22,7.2,7.3,.037,3)
+# Columns, layered capitals and soaring radial vault ribs.
+for i in range(14):
+ a=i*math.tau/14
+ if math.sin(a)>.85:continue
+ x,z=8.8*math.cos(a),-22+8.8*math.sin(a)
+ cylinder('InteriorColumns',x,z,0,.48,.36,14,1,12)
+ for y in [.2,1,13.5]:cylinder('Capitals',x,z,y,.62,.62,.25,3,12)
+ obstacles.append({'type':'circle','x':x,'z':z,'radius':.65})
+ for j in range(8):
+  u=j/8;v=(j+1)/8
+  x0,z0=(8.8*(1-u)*math.cos(a),-22+8.8*(1-u)*math.sin(a));x1,z1=(8.8*(1-v)*math.cos(a),-22+8.8*(1-v)*math.sin(a))
+  y0=14+10*math.sin(u*math.pi/2);y1=14+10*math.sin(v*math.pi/2)
+  quad('VaultRibs',(x0-.18,y0,z0),(x1-.18,y1,z1),(x1+.18,y1,z1),(x0+.18,y0,z0),1)
+ box('HallBanners',x*.94,9,-22+(z+22)*.94,.75,4,.08,12)
+ box('HallBannerGold',x*.94,7,-22+(z+22)*.94,.8,.15,.1,3)
+# Decorative throne dais is solid; the surrounding hall remains walkable.
+for j in range(5):box('ThroneSteps',0,.12+j*.22,-27,6-j*.5,.24,3.8-j*.35,1)
+obstacles.append({'type':'box','minX':-3,'maxX':3,'minZ':-29,'maxZ':-25})
+box('Throne',0,2,-27,1.5,2,.8,3);box('Throne',0,3.2,-27.4,1.8,3,.3,2)
+for x in [-3.7,3.7]:
+ cylinder('HallGuardians',x,-28,0,1,.45,7,15,10)
+ cylinder('HallGuardians',x,-28,7,.6,.15,1,15,10)
+ box('HallGuardianWings',x,6,-28,3,.35,.4,1)
+ obstacles.append({'type':'circle','x':x,'z':-28,'radius':1})
 for x in [-17,17]:
  box('PalaceWings',x,6.5,-26,10,13,14,0)
  box('WingCornices',x,13.2,-26,10.7,.5,14.7,1)
@@ -139,6 +176,7 @@ for x in [-8,8]:tower(x,-29,3,25)
 # Shallow pointed arcades and buttress webs around the great hall facade.
 for i in range(13):
  a=math.pi*.04+i*math.pi*.92/12
+ if abs(math.cos(a)*11)<2.4:continue
  x=11.12*math.cos(a);z=-22+11.12*math.sin(a)
  cylinder('HallPilasters',x,z,1,.2,.16,18.5,1,7)
  # Lower tier lancets, framed by the pilasters.
@@ -151,8 +189,16 @@ for sign in [-1,1]:
  a=(sign*9,2,-15);b=(sign*14,2,-18.5);c=(sign*9,15,-15)
  tri('FlyingButtresses',[a,b,c],1);tri('FlyingButtresses',[(a[0],a[1],a[2]-.5),(c[0],c[1],c[2]-.5),(b[0],b[1],b[2]-.5)],1)
  quad('FlyingButtresses',b,(b[0],b[1],b[2]-.5),(c[0],c[1],c[2]-.5),c,1)
+# High sanctum turrets sit above the hall roof, leaving the interior clear.
+for key,d in list(L.items()):
+ if any(key.endswith('__Tower_'+suffix) for suffix in ['0_-29','-8_-29','8_-29']):
+  keep=[i for i,(pts,m) in enumerate(d['t']) if min(p[1] for p in pts)>=21]
+  for field in ['p','n','uv']:d[field]=[v for i in keep for v in d[field][i*3:i*3+3]]
+  d['t']=[d['t'][i] for i in keep]
+  if not keep:del L[key]
+obstacles[:]=[o for o in obstacles if not(o['type']=='circle' and o.get('z')==-29 and o.get('x') in [0,-8,8])]
 # Front portal, broad stairs kept as a facade beyond the hall collider.
-box('Portal',0,4,-10.85,3.5,8,.3,9)
+# The front portal is open, not a painted door.
 for x in [-2.3,2.3]:box('PortalColumns',x,4.2,-10.1,.7,8.4,1.3,1)
 box('PortalLintel',0,8.5,-10.1,5.6,.7,1.3,1)
 tri('PortalPediment',[(-3.3,8.85,-9.4),(3.3,8.85,-9.4),(0,12,-9.4)],1)

@@ -12,11 +12,11 @@ Active map: `Models/demacian_citadel.glb`. Original, stylized architecture inspi
 - `citadel-collision.mjs`: player-radius collision and sliding helpers.
 - `Previews/citadel_overview.png`, `Previews/citadel_courtyard.png`: software renders of the exported geometry; not screenshots of the running game.
 
-The earlier `forest_courtyard` model, texture, preview, generator and metadata remain available as the previous map. The game now loads only the citadel.
+Retired forest map assets and their generator have been removed. Only the citadel is loaded.
 
 ## Play area and camera
 
-The enclosing walls span 64 × 76 game units. The playable rectangle follows their inside faces, with an additional player-radius inset. Towers, the keep, palace wings, fountains and guardian plinths are solid. The southern gate is closed. All courtyard movement remains at Y=0. The palace interior and wall-top walkways are decorative and inaccessible.
+The enclosing walls span 64 × 76 game units. The playable rectangle follows their inside faces, with an additional player-radius inset. Towers, the keep, palace wings, fountains and guardian plinths are solid. The southern gate is closed. All courtyard movement remains at Y=0. The great hall is accessible through its southern front portal only. Its roof cuts away inside. The throne dais and wall-top walkways are decorative and inaccessible.
 
 The player spawns at (0, 0, 12). Training dummies stay near the center. Scenery extends roughly 260 units across, beyond the walls, with cliffs, trees and mountain silhouettes. The camera is allowed outside player bounds. Mouse-wheel or two-finger pinch changes zoom; architecture obscuring the champion fades while retaining collision. Shadows follow the player, and the camera far plane/fog range cover the larger scene.
 
