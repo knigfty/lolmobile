@@ -15,10 +15,6 @@ import * as THREE from 'three';import {GLTFLoader} from 'three/addons/loaders/GL
 const scene=new THREE.Scene();scene.background=new THREE.Color(0x9ab6b4);scene.fog=new THREE.Fog(0x9ab6b4,19,42);
 const camera=new THREE.PerspectiveCamera(55,innerWidth/innerHeight,.1,100);const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.35;document.body.prepend(renderer.domElement);
 scene.add(new THREE.HemisphereLight(0xe9f7ff,0x52654c,2.2));const sun=new THREE.DirectionalLight(0xffedc6,2.8);sun.position.set(-5,12,8);sun.castShadow=true;sun.shadow.mapSize.set(1024,1024);sun.shadow.camera.left=-18;sun.shadow.camera.right=18;sun.shadow.camera.top=18;sun.shadow.camera.bottom=-18;sun.shadow.normalBias=.025;scene.add(sun);
-const ground=new THREE.Mesh(new THREE.PlaneGeometry(34,34),new THREE.MeshStandardMaterial({color:0x698b70,roughness:1}));ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;scene.add(ground);const arena=new THREE.Mesh(new THREE.CylinderGeometry(12.3,12.3,.23,64),new THREE.MeshStandardMaterial({color:0x879b7b,roughness:1}));arena.position.y=-.11;arena.receiveShadow=true;scene.add(arena);
-const ring=new THREE.Mesh(new THREE.RingGeometry(11.65,11.85,80),new THREE.MeshBasicMaterial({color:0xd2c08d,side:THREE.DoubleSide,transparent:true,opacity:.75}));ring.rotation.x=-Math.PI/2;ring.position.y=.012;scene.add(ring);
-const lineMat=new THREE.MeshBasicMaterial({color:0xd8d2a3,transparent:true,opacity:.18});for(let r of [4,8]){const g=new THREE.RingGeometry(r-.035,r+.035,80);const m=new THREE.Mesh(g,lineMat);m.rotation.x=-Math.PI/2;m.position.y=.016;scene.add(m)}
-function box(x,z,w,h,d,color){const mesh=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),new THREE.MeshStandardMaterial({color,roughness:.9}));mesh.position.set(x,h/2,z);mesh.castShadow=true;mesh.receiveShadow=true;scene.add(mesh);return mesh}for(let i=0;i<12;i++){const a=i*Math.PI/6;const r=13.7;box(Math.sin(a)*r,Math.cos(a)*r,1.5,.8+(i%3)*.35,1.5,i%2?0x677b70:0x8b8f79)}
 const targetMat=new THREE.MeshStandardMaterial({color:0xc17c58,roughness:.7,metalness:.12});const targets=[];for(const [x,z] of [[4,-3],[-4,-4],[5,5],[-5,4],[0,-7]]){const group=new THREE.Group();group.position.set(x,0,z);const base=new THREE.Mesh(new THREE.CylinderGeometry(.65,.8,.3,10),new THREE.MeshStandardMaterial({color:0x554f43}));base.position.y=.15;group.add(base);const body=new THREE.Mesh(new THREE.CylinderGeometry(.38,.46,1.2,10),targetMat.clone());body.position.y=1.03;body.castShadow=true;group.add(body);const head=new THREE.Mesh(new THREE.SphereGeometry(.35,12,8),targetMat.clone());head.position.y=1.85;head.castShadow=true;group.add(head);scene.add(group);const visual=new THREE.Group();group.remove(base,body,head);visual.add(base,body,head);group.add(visual);
 const healthBar=new THREE.Group();
 const red=new THREE.Mesh(new THREE.PlaneGeometry(1.25,.15),new THREE.MeshBasicMaterial({color:0xd63838,depthTest:false}));
@@ -486,8 +482,39 @@ function start(gltf){const model=gltf.scene;model.traverse(o=>{if(o.isMesh){o.ca
     garenAudio.danceLoop(()=>dancing&&current==='Dance_Loop_BASE');
   }
 });play('Idle1_Base',0);document.getElementById('loading').remove();animate()}
-const loader=new GLTFLoader();const embedded=document.getElementById('embedded-model');if(embedded){try{const b=atob(embedded.textContent.trim()),a=new Uint8Array(b.length);for(let i=0;i<b.length;i++)a[i]=b.charCodeAt(i);loader.parse(a.buffer,'',start,fail)}catch(e){fail(e)}}else loader.load('./Assets/Champs/garen.glb',start,undefined,fail);
-function fail(err){console.error(err);document.getElementById('loadText').textContent='Could not load model. Open through a local web server or use the single-file edition.';document.querySelector('#loading .spin').style.display='none'}
+const loader=new GLTFLoader();
+let loadingAsset='map';
+async function loadGame(){
+  try{
+    document.getElementById('loadText').textContent='Loading forest courtyard…';
+    const map=await loader.loadAsync('./Assets/Map/Models/forest_courtyard.glb');
+    map.scene.name='ForestCourtyard';
+    map.scene.traverse(object=>{
+      if(object.isMesh){
+        object.receiveShadow=true;
+        object.castShadow=['Rocks','TreeTrunks','TreeCanopies','Ruins'].includes(object.name);
+      }
+    });
+    scene.add(map.scene);
+    loadingAsset='champion';
+    document.getElementById('loadText').textContent='Loading champion…';
+    const embedded=document.getElementById('embedded-model');
+    if(embedded){
+      const bytes=Uint8Array.from(atob(embedded.textContent.trim()),char=>char.charCodeAt(0));
+      loader.parse(bytes.buffer,'',start,fail);
+    }else{
+      loader.load('./Assets/Champs/garen.glb',start,undefined,fail);
+    }
+  }catch(error){fail(error)}
+}
+function fail(err){
+  console.error(`Could not load ${loadingAsset}`,err);
+  document.getElementById('loadText').textContent=loadingAsset==='map'
+    ?'Could not load map. Check Assets/Map/Models/forest_courtyard.glb is included in this deployment, then reload.'
+    :'Could not load champion. Check Assets/Champs/garen.glb is included in this deployment, then reload.';
+  document.querySelector('#loading .spin').style.display='none';
+}
+loadGame();
 function animate(){
   requestAnimationFrame(animate);
   const dt=Math.min(clock.getDelta(),.05);now+=dt;
