@@ -27,7 +27,7 @@ def tri(name,pts,mat):
 def quad(name,a,b,c,d,m):tri(name,[a,b,c],m);tri(name,[a,c,d],m)
 def box(name,x,y,z,w,h,d,m):
  v=[(x+sx*w/2,y+sy*h/2,z+sz*d/2) for sx,sy,sz in [(-1,-1,-1),(1,-1,-1),(1,-1,1),(-1,-1,1),(-1,1,-1),(1,1,-1),(1,1,1),(-1,1,1)]]
- for a,b,c,d in [(0,3,2,1),(4,5,6,7),(0,1,5,4),(1,2,6,5),(2,3,7,6),(3,0,4,7)]:quad(name,v[a],v[b],v[c],v[d],m)
+ for a,b,c,d in [(0,3,2,1),(4,5,6,7),(0,1,5,4),(1,2,6,5),(2,3,7,6),(3,0,4,7)]:quad(name,v[a],v[d],v[c],v[b],m)
 def frustum(name,x,z,y,r0,r1,h,m,N=10):
  for i in range(N):
   a=i*math.tau/N;b=(i+1)*math.tau/N
@@ -102,7 +102,16 @@ for pts,m in [t for d in layers.values() for t in d['t']]:
 im=Image.fromarray(pixels);draw=ImageDraw.Draw(im)
 draw.text((35,30),'FOREST COURTYARD / LoL Mobile',fill=(231,215,167));draw.text((35,52),'Original low-poly arena | 34 x 34 units | Y up',fill=(181,197,184))
 im.save(ROOT/'Previews/forest_courtyard.png')
-report={'format':'glTF 2.0 binary','triangles':sum(len(d['p'])//3 for d in layers.values()),'meshes':len(layers),'materials':1,'embedded_textures':1,'texture_size':[512,512],'bytes':len(out),'sha256':hashlib.sha256(out).hexdigest(),'bounds':{'min':[-17,-.8,-17],'max':[17,5,17]},'checks':{'header_length':len(out)==struct.unpack_from('<I',out,8)[0],'external_uris':False,'finite_positions':all(np.isfinite(d['p']).all() for d in layers.values())},'runtime_import_tested':False}
+# Catch inside-out closed box meshes before publishing.
+for name in ('Terrain','Paths','Ruins','CourtMarkers'):
+ triangles=np.array(layers[name]['p']).reshape(-1,3,3)
+ volume=np.einsum('ij,ij->i',triangles[:,0],np.cross(triangles[:,1],triangles[:,2])).sum()/6
+ assert volume>0, f'{name}: inward triangle winding'
+ground=np.array(layers['Terrain']['p']); normals=np.array(layers['Terrain']['n'])
+top=np.isclose(ground[:,1],0)
+assert np.all(normals[top & (np.abs(normals[:,1])>.5),1]>.99)
+all_positions=np.concatenate([np.array(d['p']) for d in layers.values()])
+report={'format':'glTF 2.0 binary','triangles':sum(len(d['p'])//3 for d in layers.values()),'meshes':len(layers),'materials':1,'embedded_textures':1,'texture_size':[512,512],'bytes':len(out),'sha256':hashlib.sha256(out).hexdigest(),'bounds':{'min':all_positions.min(axis=0).tolist(),'max':all_positions.max(axis=0).tolist()},'checks':{'header_length':len(out)==struct.unpack_from('<I',out,8)[0],'external_uris':False,'outward_box_winding':True,'grass_top_y_zero_upward_normal':True,'finite_positions':all(np.isfinite(d['p']).all() for d in layers.values())},'runtime_import_tested':False}
 (ROOT/'Metadata/validation.json').write_text(json.dumps(report,indent=2)+'\n')
 (ROOT/'Metadata/layout.json').write_text(json.dumps({'up_axis':'Y','origin':[0,0,0],'playable_radius':11.5,'visual_boundary_radius':11.75,'spawn':[0,0,0],'collision_included':False,'scenery_min_radius':12.5},indent=2)+'\n')
 print(json.dumps(report,indent=2))
