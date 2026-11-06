@@ -18,7 +18,7 @@ Y up, origin at the center, scale 1. Ground footprint 34 × 34 units. Center pla
 
 Use the existing Three.js GLTFLoader with `./Assets/Map/Models/forest_courtyard.glb`, then add `gltf.scene` at its original scale and position. Set mesh `receiveShadow` and `castShadow` according to the device budget. Replace the existing procedural environment when integrating to avoid overlapping surfaces. Keep champions and training targets managed by the game.
 
-This change supplies assets only: the game has not been switched to this map. Collision meshes and navigation meshes are not included. Structural checks do not constitute an in-game or GPU import test.
+The game loads this map before loading the champion. The original procedural arena is removed. A missing map displays a loading error with the expected path. Collision meshes and navigation meshes are not included. Structural checks do not constitute an in-game or GPU import test.
 
 ## Rebuild
 
