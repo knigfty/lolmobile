@@ -9,6 +9,8 @@
 <div id="loading"><div class="spin"></div><h1>GAREN ARENA</h1><p id="loadText">Preparing your character...</p></div>
 <div id="ui"><div id="top"><div><div id="brand">3D PLAYGROUND</div><a id="settings-link" href="/settings" aria-label="Settings" title="Settings"><svg viewBox="0 0 24 24" width="25" height="25" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M9 3h6l.6 2.6 2.3 1.3 2.5-.8 3 5.2-1.9 1.8v2.6l1.9 1.8-3 5.2-2.5-.8-2.3 1.3L15 26H9l-.6-2.6-2.3-1.3-2.5.8-3-5.2 1.9-1.8v-2.6L.6 11.5l3-5.2 2.5.8 2.3-1.3z" transform="translate(2 0) scale(.78)"/><circle cx="11.4" cy="11.4" r="3.2"/></svg></a></div><div id="stats">Targets hit: <strong id="hits">0</strong><br>Action: <strong id="state">Idle</strong></div></div><div id="message"></div><div id="bottom"><div id="joystick"><div id="stick"></div></div><div id="buttons"><button class="action" id="skill">SPIN</button><button class="action" id="justice">JUSTICE</button><button class="action" id="attack">ATTACK</button><button class="action" id="dance">DANCE</button></div></div><div id="help">Desktop: WASD / arrows · Space attack · E spin · R justice · F dance</div></div>
 <script type="module">
+import {createGarenAudio} from './garen-audio.js';
+const garenAudio=createGarenAudio();
 import * as THREE from 'three';import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 const scene=new THREE.Scene();scene.background=new THREE.Color(0x9ab6b4);scene.fog=new THREE.Fog(0x9ab6b4,19,42);
 const camera=new THREE.PerspectiveCamera(55,innerWidth/innerHeight,.1,100);const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.35;document.body.prepend(renderer.domElement);
@@ -128,14 +130,15 @@ function startRunSpell(){
   runSpellUntil=time+2.5;
   runSpellArmed=true;
   runSpellReadyAt=Infinity;
+  garenAudio.runSpell();
   play('Run_Spell1',.12);
 }
 // Boost lifetime is independent of consuming the empowered strike.
-function endRunSpell(time){runSpellArmed=false;runSpellReadyAt=time+8}
-function damageTarget(t){
+function endRunSpell(time){garenAudio.endRunSpell();runSpellArmed=false;runSpellReadyAt=time+8}
+function damageTarget(t,damage=1){
   if(t.hp<=0||!t.group.visible)return;
   const time=inputTime();
-  t.hp=Math.max(0,t.hp-1);hitCount++;hitsEl.textContent=hitCount;
+  t.hp=Math.max(0,t.hp-damage);hitCount++;hitsEl.textContent=hitCount;
   t.lastHit=time;
   const dx=t.group.position.x-player.position.x,dz=t.group.position.z-player.position.z,length=Math.hypot(dx,dz)||1;
   t.hurtX=dx/length;t.hurtZ=dz/length;
@@ -195,6 +198,7 @@ function queueSpellCommand(command){
 }
 function cancelDance(){
   if(!dancing)return;
+  garenAudio.endDance();
   dancing=false;lockUntil=0;mixer.stopAllAction();current='';play('Idle1_Base',0);
 }
 function updateRunSpell(){
@@ -202,9 +206,10 @@ function updateRunSpell(){
   if(spell1Target){
     if(!spell1Hit&&time>=spell1HitAt){
       spell1Hit=true;
-      if(player.position.distanceTo(spell1Target.group.position)<=SPELL1_RANGE)damageTarget(spell1Target);
+      if(spell1Target.hp>0&&spell1Target.group.visible&&player.position.distanceTo(spell1Target.group.position)<=SPELL1_RANGE){damageTarget(spell1Target);garenAudio.spell1Hit()}
     }
     if(time>=spell1Until){
+      garenAudio.endSpell1();
       spell1Target=null;endRunSpell(spell1Until);
       actions.Spell1.stop();current='';
       play(movementInput().moving?'Run_Base':'Idle1_Base',0);
@@ -233,6 +238,7 @@ function updateRunSpell(){
   if(movementInput().moving)queueSpellCommand('move');
   else if(attackHolding)queueSpellCommand('attack');
   player.rotation.y=Math.atan2(nearest.group.position.x-player.position.x,nearest.group.position.z-player.position.z);
+  garenAudio.spell1();
   play('Spell1',.08,true);
 }
 function queueAttackCommand(command){
@@ -280,6 +286,7 @@ function updatePendingAttack(){
 function spinPulse(){
   const hits=targets.filter(t=>t.hp>0&&t.group.visible&&Math.hypot(t.group.position.x-player.position.x,t.group.position.z-player.position.z)<=3);
   for(const t of hits)damageTarget(t);
+  if(hits.length)garenAudio.spinHit();
 }
 // Recognize the held combo every frame, regardless of which input arrived first.
 function updateAttackHold(){
@@ -349,6 +356,7 @@ function cancelActionForMovement(newCommand=false){
   }
   if(now>=lockUntil||isSpinAnimation(current)||current==='Spell4_Base')return;
   if(current.startsWith('Attack')&&!newCommand)return;
+  if(dancing)garenAudio.endDance();
   lockUntil=0;dancing=false;
   clearTimeout(damageTimer);
   damageTimer=null;
@@ -362,6 +370,7 @@ function action(name,duration,damage){
   lockUntil=now+(name.startsWith('Attack')?actions[name].getClip().duration:duration);
   play(name,.12,true);
   if(name.startsWith('Attack')){
+    garenAudio.attack(name);
     attackRequested=false;attackIdleBlend=false;
     attackIndex=name==='Attack1'?1:0;
     activeAttackName=name;attackStartedAt=inputTime();attackUntil=attackStartedAt+ATTACK_DURATION;attackReadyAt=attackStartedAt+ATTACK_DURATION;actions[name].setEffectiveTimeScale(actions[name].getClip().duration/ATTACK_DURATION);lockUntil=Infinity;pendingAttackCommand=null;
@@ -382,6 +391,7 @@ function action(name,duration,damage){
         return distance<2.45&&facing;
       });
       for(const t of hits)damageTarget(t);
+      if(hits.length&&name.startsWith('Attack'))garenAudio.hit(name);
     },name.startsWith('Attack')?ATTACK_DURATION*ATTACK_HIT_PHASE*1000:duration*450);
   }
 }
@@ -410,7 +420,16 @@ function justice(){
   }
   if(!nearest){toast('NO TARGET IN FRONT');return}
   player.rotation.y=Math.atan2(nearest.group.position.x-player.position.x,nearest.group.position.z-player.position.z);
-  action('Spell4_Base',actions.Spell4_Base.getClip().duration,false);
+  const duration=actions.Spell4_Base.getClip().duration;
+  action('Spell4_Base',duration,false);
+  garenAudio.justice();
+  // Match the empowered strike's impact phase; damage and hit audio share a tick.
+  damageTimer=setTimeout(()=>{
+    damageTimer=null;
+    if(nearest.hp<=0||!nearest.group.visible)return;
+    damageTarget(nearest,5);
+    garenAudio.justiceHit();
+  },duration*.45*1000);
 }
 function spin(){
   attackRequested=false;
@@ -418,6 +437,7 @@ function spin(){
   if(!mixer||now<lockUntil&&!dancing||runSpellActive())return;
   const name='Spell3_0';
   action(name,SPIN_DURATION,false);
+  garenAudio.spin();
   // Extend the window through repeats at the original asset's playback speed.
   actions[name].setEffectiveTimeScale(1).setLoop(THREE.LoopRepeat,Infinity);
   actions[name].clampWhenFinished=false;
@@ -427,8 +447,10 @@ function spin(){
 function dance(){
   attackRequested=false;
   if(queueSpellCommand('dance')||queueAttackCommand('dance'))return;
-  if(!mixer||now<lockUntil||runSpellActive()||spell1Target)return;
+  if(!mixer||(now<lockUntil&&!dancing)||runSpellActive()||spell1Target)return;
+  cancelDance();
   dancing=true;lockUntil=Infinity;play('Dance_Base',.2,true);
+  garenAudio.dance();
 }
 const attackButton=document.getElementById('attack');
 attackButton.addEventListener('pointerdown',e=>{
@@ -456,9 +478,13 @@ addEventListener('keydown',e=>{
   if(controlMatches('justice',e.code))justice();
 });
 addEventListener('keyup',e=>{keys.delete(e.code);if(controlMatches('attack',e.code)){e.preventDefault();endAttack()}});
-addEventListener('blur',()=>{endAttack(true);attackPointerId=null;keys.clear();stickX=stickY=0;stick.style.transform='translate(-50%,-50%)'});
+addEventListener('blur',()=>{garenAudio.stop();endAttack(true);attackPointerId=null;keys.clear();stickX=stickY=0;stick.style.transform='translate(-50%,-50%)'});
+document.addEventListener('visibilitychange',()=>{if(document.hidden)garenAudio.stop()});
 function start(gltf){const model=gltf.scene;model.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;o.frustumCulled=false;o.material.side=THREE.DoubleSide}});player.add(model);mixer=new THREE.AnimationMixer(model);for(const clip of gltf.animations)actions[clip.name]=mixer.clipAction(clip);mixer.addEventListener('finished',e=>{
-  if(dancing&&current==='Dance_Base'&&e.action===actions.Dance_Base)play('Dance_Loop_BASE',.12);
+  if(dancing&&current==='Dance_Base'&&e.action===actions.Dance_Base){
+    play('Dance_Loop_BASE',.12);
+    garenAudio.danceLoop(()=>dancing&&current==='Dance_Loop_BASE');
+  }
 });play('Idle1_Base',0);document.getElementById('loading').remove();animate()}
 const loader=new GLTFLoader();const embedded=document.getElementById('embedded-model');if(embedded){try{const b=atob(embedded.textContent.trim()),a=new Uint8Array(b.length);for(let i=0;i<b.length;i++)a[i]=b.charCodeAt(i);loader.parse(a.buffer,'',start,fail)}catch(e){fail(e)}}else loader.load('./Assets/Champs/garen.glb',start,undefined,fail);
 function fail(err){console.error(err);document.getElementById('loadText').textContent='Could not load model. Open through a local web server or use the single-file edition.';document.querySelector('#loading .spin').style.display='none'}
@@ -469,6 +495,7 @@ function animate(){
   updateAttack();
   updatePendingAttack();
   if(activeSpinName&&inputTime()>=spinUntil){
+    garenAudio.spinEnd();
     actions[activeSpinName].stop();activeSpinName='';current='';lockUntil=0;
     play(movementInput().moving?'Run_Base':'Idle1_Base',0);
   }
@@ -479,7 +506,9 @@ function animate(){
   if(moving&&(now>=lockUntil||isSpinAnimation(current))){
     x/=Math.max(1,len);y/=Math.max(1,len);
     const speed=4.5*(inputTime()<runSpellUntil?1.35:1)*spell1SpeedMultiplier();
+    const previousX=player.position.x,previousZ=player.position.z;
     movePlayer(x*speed*dt,y*speed*dt);
+    if(!runSpellActive()&&!spell1Target&&inputTime()>=runSpellUntil&&!isSpinAnimation(current)&&current!=='Spell4_Base'&&(player.position.x!==previousX||player.position.z!==previousZ))garenAudio.move();
     // The model faces local +Z; screen right/down map to world +X/+Z.
     const desired=Math.atan2(x,y);
     const delta=desired-player.rotation.y;
