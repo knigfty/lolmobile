@@ -1,29 +1,31 @@
-# Forest Courtyard
+# Demacian Citadel
 
-Original, procedural low-poly training arena for LoL Mobile. All model textures are embedded in `Models/forest_courtyard.glb`; no external texture files are required to load it.
+Active map: `Models/demacian_citadel.glb`. Original, stylized architecture inspired by the two castle references: pale masonry, blue domes, gilded ribs, a high sanctum, curtain walls, lancet windows, guardians, gardens, and reflecting fountains. This is a new procedural interpretation, not an extracted game map or exact reconstruction.
 
-## Folders
+## Organization
 
-- `Models/`: standalone runtime GLB.
-- `Textures/`: editable 512 × 512 base-color atlas (also embedded).
-- `Source/`: deterministic Python generator; requires numpy and Pillow.
-- `Metadata/`: layout and structural validation report.
-- `Previews/`: software-rendered geometry preview; not an in-game screenshot.
+- `Models/demacian_citadel.glb`: self-contained map with embedded 1024 × 1024 texture atlas.
+- `Textures/citadel_atlas.png`: editable copy of the embedded atlas.
+- `Source/generate_citadel.py`: deterministic geometry, texture, layout, validation and preview generation (Python + numpy + Pillow).
+- `Metadata/citadel-layout.json`: wall bounds, spawn, and solid building/fountain footprints; loaded by the game.
+- `Metadata/citadel-validation.json`: geometry and file checks.
+- `citadel-collision.mjs`: player-radius collision and sliding helpers.
+- `Previews/citadel_overview.png`, `Previews/citadel_courtyard.png`: software renders of the exported geometry; not screenshots of the running game.
 
-## Scale and layout
+The earlier `forest_courtyard` model, texture, preview, generator and metadata remain available as the previous map. The game now loads only the citadel.
 
-Y up, origin at the center, scale 1. Ground footprint 34 × 34 units. Center platform is at Y = 0.01; paths and inlays have small offsets to avoid flicker. The playable radius is 11.5 units, matching the existing arena scale. Trees, rocks and four ruined pillars sit around the perimeter. Meshes are grouped by terrain, courtyard, paths, inlays, rocks, trunks, canopies and ruins.
+## Play area and camera
 
-## Loading
+The enclosing walls span 64 × 76 game units. The playable rectangle follows their inside faces, with an additional player-radius inset. Towers, the keep, palace wings, fountains and guardian plinths are solid. The southern gate is closed. All courtyard movement remains at Y=0. The palace interior and wall-top walkways are decorative and inaccessible.
 
-Use the existing Three.js GLTFLoader with `./Assets/Map/Models/forest_courtyard.glb`, then add `gltf.scene` at its original scale and position. Set mesh `receiveShadow` and `castShadow` according to the device budget. Replace the existing procedural environment when integrating to avoid overlapping surfaces. Keep champions and training targets managed by the game.
+The player spawns at (0, 0, 12). Training dummies stay near the center. Scenery extends roughly 260 units across, beyond the walls, with cliffs, trees and mountain silhouettes. The camera is allowed outside player bounds. Mouse-wheel or two-finger pinch changes zoom; architecture obscuring the champion fades while retaining collision. Shadows follow the player, and the camera far plane/fog range cover the larger scene.
 
-The game loads this map before loading the champion. The original procedural arena is removed. A missing map displays a loading error with the expected path. Collision meshes and navigation meshes are not included. Structural checks do not constitute an in-game or GPU import test.
+## Generation and validation
 
-## Rebuild
+Run `python Assets/Map/Source/generate_citadel.py` from the repository root. Replaces citadel outputs in the folders above. Run `node test-citadel.mjs` to check enclosed movement, solid landmarks, spawn clearance, GLB structure, and upward courtyard normals. The export asserts positive signed volumes for closed architectural meshes, keeps the foundation below the paved ground to avoid overlapping faces, and embeds the PNG so no external textures are needed.
 
-From any working directory: `python Assets/Map/Source/generate_map.py` (adjust the path to this script if needed). Rebuilding replaces the generated model, texture, preview and metadata.
+Software previews and structural tests do not verify GPU rendering or performance on a real phone. The runtime metadata accurately reports whether an in-engine import has been tested.
 
 ## Provenance
 
-Created for this project with deterministic local geometry and procedural textures; no extracted Riot map assets or external asset packs were used. Seed: 71. No paid generation services were used. This provenance statement does not apply to other files in the repository.
+Original local geometry and procedural textures, seed 211. User-provided `Demacia_Citadel.jpg` and `demacia-foreground.jpg` guided architectural shapes and colors; they are not embedded or redistributed. No extracted Riot meshes, external asset packs, or paid generation services were used. Demacia and League of Legends remain associated with their respective rights holders. This provenance statement applies only to this new map.

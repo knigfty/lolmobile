@@ -1,0 +1,144 @@
+{
+  "name": "Demacian Citadel",
+  "units": "game units",
+  "up_axis": "Y",
+  "ground_y": 0,
+  "bounds": {
+    "minX": -30.5,
+    "maxX": 30.5,
+    "minZ": -36.5,
+    "maxZ": 36.5
+  },
+  "spawn": [
+    0,
+    0,
+    12
+  ],
+  "obstacles": [
+    {
+      "type": "circle",
+      "x": -20,
+      "z": 2,
+      "radius": 2.9
+    },
+    {
+      "type": "circle",
+      "x": 20,
+      "z": 2,
+      "radius": 2.9
+    },
+    {
+      "type": "circle",
+      "x": -32,
+      "z": -38,
+      "radius": 3.596
+    },
+    {
+      "type": "circle",
+      "x": -32,
+      "z": 0,
+      "radius": 3.596
+    },
+    {
+      "type": "circle",
+      "x": -32,
+      "z": 38,
+      "radius": 3.596
+    },
+    {
+      "type": "circle",
+      "x": 32,
+      "z": -38,
+      "radius": 3.596
+    },
+    {
+      "type": "circle",
+      "x": 32,
+      "z": 0,
+      "radius": 3.596
+    },
+    {
+      "type": "circle",
+      "x": 32,
+      "z": 38,
+      "radius": 3.596
+    },
+    {
+      "type": "circle",
+      "x": -12,
+      "z": 38,
+      "radius": 3.48
+    },
+    {
+      "type": "circle",
+      "x": 12,
+      "z": 38,
+      "radius": 3.48
+    },
+    {
+      "type": "circle",
+      "x": 0,
+      "z": -22,
+      "radius": 12.76
+    },
+    {
+      "type": "box",
+      "minX": -22.4,
+      "maxX": -11.6,
+      "minZ": -33.4,
+      "maxZ": -18.6
+    },
+    {
+      "type": "circle",
+      "x": -17,
+      "z": -20,
+      "radius": 4.292
+    },
+    {
+      "type": "box",
+      "minX": 11.6,
+      "maxX": 22.4,
+      "minZ": -33.4,
+      "maxZ": -18.6
+    },
+    {
+      "type": "circle",
+      "x": 17,
+      "z": -20,
+      "radius": 4.292
+    },
+    {
+      "type": "circle",
+      "x": 0,
+      "z": -29,
+      "radius": 5.8
+    },
+    {
+      "type": "circle",
+      "x": -8,
+      "z": -29,
+      "radius": 3.48
+    },
+    {
+      "type": "circle",
+      "x": 8,
+      "z": -29,
+      "radius": 3.48
+    },
+    {
+      "type": "circle",
+      "x": -6,
+      "z": -10.8,
+      "radius": 1.4
+    },
+    {
+      "type": "circle",
+      "x": 6,
+      "z": -10.8,
+      "radius": 1.4
+    }
+  ],
+  "visual_extent": 260,
+  "wall_height": 7.8,
+  "closed_gate": true
+}

@@ -7,14 +7,15 @@
 </style>
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"}}</script></head><body>
 <div id="loading"><div class="spin"></div><h1>GAREN ARENA</h1><p id="loadText">Preparing your character...</p></div>
-<div id="ui"><div id="top"><div><div id="brand">3D PLAYGROUND</div><a id="settings-link" href="/settings" aria-label="Settings" title="Settings"><svg viewBox="0 0 24 24" width="25" height="25" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M9 3h6l.6 2.6 2.3 1.3 2.5-.8 3 5.2-1.9 1.8v2.6l1.9 1.8-3 5.2-2.5-.8-2.3 1.3L15 26H9l-.6-2.6-2.3-1.3-2.5.8-3-5.2 1.9-1.8v-2.6L.6 11.5l3-5.2 2.5.8 2.3-1.3z" transform="translate(2 0) scale(.78)"/><circle cx="11.4" cy="11.4" r="3.2"/></svg></a></div><div id="stats">Targets hit: <strong id="hits">0</strong><br>Action: <strong id="state">Idle</strong></div></div><div id="message"></div><div id="bottom"><div id="joystick"><div id="stick"></div></div><div id="buttons"><button class="action" id="skill">SPIN</button><button class="action" id="justice">JUSTICE</button><button class="action" id="attack">ATTACK</button><button class="action" id="dance">DANCE</button></div></div><div id="help">Desktop: WASD / arrows · Space attack · E spin · R justice · F dance</div></div>
+<div id="ui"><div id="top"><div><div id="brand">3D PLAYGROUND</div><a id="settings-link" href="/settings" aria-label="Settings" title="Settings"><svg viewBox="0 0 24 24" width="25" height="25" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M9 3h6l.6 2.6 2.3 1.3 2.5-.8 3 5.2-1.9 1.8v2.6l1.9 1.8-3 5.2-2.5-.8-2.3 1.3L15 26H9l-.6-2.6-2.3-1.3-2.5.8-3-5.2 1.9-1.8v-2.6L.6 11.5l3-5.2 2.5.8 2.3-1.3z" transform="translate(2 0) scale(.78)"/><circle cx="11.4" cy="11.4" r="3.2"/></svg></a></div><div id="stats">Targets hit: <strong id="hits">0</strong><br>Action: <strong id="state">Idle</strong></div></div><div id="message"></div><div id="bottom"><div id="joystick"><div id="stick"></div></div><div id="buttons"><button class="action" id="skill">SPIN</button><button class="action" id="justice">JUSTICE</button><button class="action" id="attack">ATTACK</button><button class="action" id="dance">DANCE</button></div></div><div id="help">Desktop: WASD / arrows · Space attack · E spin · R justice · F dance · Scroll / pinch to zoom</div></div>
 <script type="module">
+import {containsPosition,constrainPosition} from './Assets/Map/citadel-collision.mjs';
 import {createGarenAudio} from './garen-audio.js';
 const garenAudio=createGarenAudio();
 import * as THREE from 'three';import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
-const scene=new THREE.Scene();scene.background=new THREE.Color(0x9ab6b4);scene.fog=new THREE.Fog(0x9ab6b4,19,42);
-const camera=new THREE.PerspectiveCamera(55,innerWidth/innerHeight,.1,100);const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.35;document.body.prepend(renderer.domElement);
-scene.add(new THREE.HemisphereLight(0xe9f7ff,0x52654c,2.2));const sun=new THREE.DirectionalLight(0xffedc6,2.8);sun.position.set(-5,12,8);sun.castShadow=true;sun.shadow.mapSize.set(1024,1024);sun.shadow.camera.left=-18;sun.shadow.camera.right=18;sun.shadow.camera.top=18;sun.shadow.camera.bottom=-18;sun.shadow.normalBias=.025;scene.add(sun);
+const scene=new THREE.Scene();scene.background=new THREE.Color(0xb2cdd8);scene.fog=new THREE.Fog(0xb2cdd8,75,210);
+const camera=new THREE.PerspectiveCamera(55,innerWidth/innerHeight,.1,330);const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.35;document.body.prepend(renderer.domElement);
+scene.add(new THREE.HemisphereLight(0xe9f7ff,0x52654c,2.2));const sun=new THREE.DirectionalLight(0xffedc6,2.8);sun.position.set(-5,12,8);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);sun.shadow.camera.left=-27;sun.shadow.camera.right=27;sun.shadow.camera.top=27;sun.shadow.camera.bottom=-27;sun.shadow.camera.near=1;sun.shadow.camera.far=160;sun.shadow.normalBias=.018;sun.shadow.bias=-.00008;sun.shadow.camera.updateProjectionMatrix();scene.add(sun,sun.target);
 const targetMat=new THREE.MeshStandardMaterial({color:0xc17c58,roughness:.7,metalness:.12});const targets=[];for(const [x,z] of [[4,-3],[-4,-4],[5,5],[-5,4],[0,-7]]){const group=new THREE.Group();group.position.set(x,0,z);const base=new THREE.Mesh(new THREE.CylinderGeometry(.65,.8,.3,10),new THREE.MeshStandardMaterial({color:0x554f43}));base.position.y=.15;group.add(base);const body=new THREE.Mesh(new THREE.CylinderGeometry(.38,.46,1.2,10),targetMat.clone());body.position.y=1.03;body.castShadow=true;group.add(body);const head=new THREE.Mesh(new THREE.SphereGeometry(.35,12,8),targetMat.clone());head.position.y=1.85;head.castShadow=true;group.add(head);scene.add(group);const visual=new THREE.Group();group.remove(base,body,head);visual.add(base,body,head);group.add(visual);
 const healthBar=new THREE.Group();
 const red=new THREE.Mesh(new THREE.PlaneGeometry(1.25,.15),new THREE.MeshBasicMaterial({color:0xd63838,depthTest:false}));
@@ -70,7 +71,8 @@ function configuredAttackDuration(){
   return 1.5;
 }
 const ATTACK_DURATION=configuredAttackDuration(),ATTACK_SHORT_DURATION=ATTACK_DURATION*.5,ATTACK_HIT_PHASE=.1755;
-const PLAYER_RADIUS=.4,ARENA_RADIUS=10.9;
+const PLAYER_RADIUS=.4;
+let mapLayout=null;
 let dancing=false,activeAttackName='',attackStartedAt=0,attackUntil=0,pendingAttackCommand=null;
 let attackReadyAt=0,attackRequested=false;
 const SPIN_DURATION=3,SPIN_COUNT=7;
@@ -102,8 +104,7 @@ function movePlayer(dx,dz){
     const previous=player.position.clone();
     player.position.x+=dx/steps;player.position.z+=dz/steps;
     for(let pass=0;pass<8;pass++){
-      const radius=Math.hypot(player.position.x,player.position.z);
-      if(radius>ARENA_RADIUS){player.position.x*=ARENA_RADIUS/radius;player.position.z*=ARENA_RADIUS/radius}
+      constrainPosition(player.position,PLAYER_RADIUS,mapLayout);
       for(const t of targets){
         if(t.hp<=0||!t.group.visible||!overlapsTarget(player.position,t))continue;
         let nx=player.position.x-t.group.position.x,nz=player.position.z-t.group.position.z;
@@ -114,7 +115,7 @@ function movePlayer(dx,dz){
         player.position.z=t.group.position.z+nz/distance*separation;
       }
     }
-    if(Math.hypot(player.position.x,player.position.z)>ARENA_RADIUS+1e-7||targets.some(t=>t.hp>0&&t.group.visible&&overlapsTarget(player.position,t)))player.position.copy(previous);
+    if(!containsPosition(player.position,PLAYER_RADIUS,mapLayout)||targets.some(t=>t.hp>0&&t.group.visible&&overlapsTarget(player.position,t)))player.position.copy(previous);
   }
 }
 function startRunSpell(){
@@ -482,20 +483,59 @@ function start(gltf){const model=gltf.scene;model.traverse(o=>{if(o.isMesh){o.ca
     garenAudio.danceLoop(()=>dancing&&current==='Dance_Loop_BASE');
   }
 });play('Idle1_Base',0);document.getElementById('loading').remove();animate()}
+// Camera zoom has no collision clamp: it can look beyond the closed castle walls.
+const cameraOccluders=[],occlusionGroups=new Map(),cameraRay=new THREE.Raycaster();
+const cameraFocus=new THREE.Vector3();let occlusionCheck=0;
+let cameraZoom=1;
+const cameraTouches=new Map();let pinchDistance=0;
+renderer.domElement.addEventListener('wheel',event=>{
+  event.preventDefault();cameraZoom=Math.max(.8,Math.min(4,cameraZoom*Math.exp(event.deltaY*.001)));
+},{passive:false});
+renderer.domElement.addEventListener('pointerdown',event=>{
+  if(event.pointerType!=='touch')return;
+  renderer.domElement.setPointerCapture(event.pointerId);
+  cameraTouches.set(event.pointerId,{x:event.clientX,y:event.clientY});pinchDistance=0;
+});
+renderer.domElement.addEventListener('pointermove',event=>{
+  if(!cameraTouches.has(event.pointerId))return;
+  cameraTouches.set(event.pointerId,{x:event.clientX,y:event.clientY});
+  if(cameraTouches.size===2){
+    const [a,b]=[...cameraTouches.values()],distance=Math.hypot(a.x-b.x,a.y-b.y);
+    if(pinchDistance>0&&distance>0)cameraZoom=Math.max(.8,Math.min(4,cameraZoom*pinchDistance/distance));
+    pinchDistance=distance;
+  }
+});
+for(const eventName of ['pointerup','pointercancel','lostpointercapture'])renderer.domElement.addEventListener(eventName,event=>{
+  cameraTouches.delete(event.pointerId);pinchDistance=0;
+});
 const loader=new GLTFLoader();
 let loadingAsset='map';
 async function loadGame(){
   try{
-    document.getElementById('loadText').textContent='Loading forest courtyard…';
-    const map=await loader.loadAsync('./Assets/Map/Models/forest_courtyard.glb?v=2');
-    map.scene.name='ForestCourtyard';
+    document.getElementById('loadText').textContent='Loading Demacian citadel…';
+    const layoutResponse=await fetch('./Assets/Map/Metadata/citadel-layout.json?v=1');
+    if(!layoutResponse.ok)throw new Error('Citadel collision layout could not be loaded');
+    mapLayout=await layoutResponse.json();
+    const map=await loader.loadAsync('./Assets/Map/Models/demacian_citadel.glb?v=1');
+    map.scene.name='DemacianCitadel';
     map.scene.traverse(object=>{
       if(object.isMesh){
         object.receiveShadow=true;
-        object.castShadow=['Rocks','TreeTrunks','TreeCanopies','Ruins'].includes(object.name);
+        const part=object.name.split('__')[0];
+        object.castShadow=!['OutsideMeadow','DistantMountains','CourtyardPaving','MarbleAvenues','Gardens','Water','TrainingInlays','Windows','RoyalBanners','BannerTrim'].includes(part);
+        const groupName=object.name.split('__')[1];
+        if(groupName||['PalaceWings','WingCornices','PalacePilasters','HallPilasters','HallLancets','FlyingButtresses','Portal','PortalColumns','PortalLintel','PortalPediment','ClosedGate','GateBars','GateLintel'].includes(part)){
+          object.material=object.material.clone();
+          const key=groupName||part;
+          if(!occlusionGroups.has(key))occlusionGroups.set(key,{meshes:[],hidden:false});
+          occlusionGroups.get(key).meshes.push(object);
+          object.userData.occlusionGroup=key;cameraOccluders.push(object);
+        }
       }
     });
     scene.add(map.scene);
+    player.position.set(...mapLayout.spawn);
+    camera.position.set(player.position.x,16,player.position.z+22);
     loadingAsset='champion';
     document.getElementById('loadText').textContent='Loading champion…';
     const embedded=document.getElementById('embedded-model');
@@ -510,7 +550,7 @@ async function loadGame(){
 function fail(err){
   console.error(`Could not load ${loadingAsset}`,err);
   document.getElementById('loadText').textContent=loadingAsset==='map'
-    ?'Could not load map. Check Assets/Map/Models/forest_courtyard.glb is included in this deployment, then reload.'
+    ?'Could not load map. Check the citadel model and layout under Assets/Map are included in this deployment, then reload.'
     :'Could not load champion. Check Assets/Champs/garen.glb is included in this deployment, then reload.';
   document.querySelector('#loading .spin').style.display='none';
 }
@@ -557,10 +597,29 @@ function animate(){
     }
   }
   const aspect=innerWidth/innerHeight;
-  const distance=aspect<.7?11.5:9.8;
+  const distance=(aspect<.7?16:14)*cameraZoom;
   const goal=new THREE.Vector3(player.position.x,distance*.72,player.position.z+distance);
   camera.position.lerp(goal,Math.min(1,dt*3.4));
   camera.lookAt(player.position.x,1.1,player.position.z);
+  // Keep the shadow frustum around the player across the larger courtyard.
+  sun.position.set(player.position.x-24,48,player.position.z+20);
+  sun.target.position.set(player.position.x,0,player.position.z);
+  // Fade only architecture between camera and champion; collision stays solid.
+  occlusionCheck-=dt;
+  if(occlusionCheck<=0){
+    occlusionCheck=.1;cameraFocus.set(player.position.x,1.1,player.position.z);
+    const distance=camera.position.distanceTo(cameraFocus);
+    cameraRay.set(camera.position,cameraFocus.sub(camera.position).normalize());cameraRay.far=distance-.5;
+    for(const group of occlusionGroups.values())group.hidden=false;
+    for(const hit of cameraRay.intersectObjects(cameraOccluders,false))occlusionGroups.get(hit.object.userData.occlusionGroup).hidden=true;
+  }
+  for(const group of occlusionGroups.values())for(const object of group.meshes){
+    const material=object.material,target=group.hidden ? .22 : 1;
+    material.opacity=THREE.MathUtils.lerp(material.opacity,target,Math.min(1,dt*9));
+    const transparent=material.opacity<.995;
+    if(material.transparent!==transparent){material.transparent=transparent;material.needsUpdate=true}
+    material.depthWrite=!transparent;
+  }
   renderer.render(scene,camera);
 }
 addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,2))});

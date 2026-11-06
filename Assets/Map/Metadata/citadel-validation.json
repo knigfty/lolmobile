@@ -1,0 +1,40 @@
+{
+  "triangles": 34684,
+  "meshes": 160,
+  "materials": 1,
+  "embedded_textures": 1,
+  "texture_size": [
+    1024,
+    1024
+  ],
+  "bytes": 3618156,
+  "sha256": "8fa84a538dceb696ec182278cacad552c14cb08c7f9163c4c0a956d492754408",
+  "bounds": {
+    "min": [
+      -130.0,
+      -25.0,
+      -130.36395790520714
+    ],
+    "max": [
+      130.0,
+      37.150000000000006,
+      131.63709977177248
+    ]
+  },
+  "checks": {
+    "finite_positions": true,
+    "outward_closed_meshes": true,
+    "courtyard_y_zero_upward_normals": true,
+    "no_external_uris": true
+  },
+  "runtime_import_tested": false,
+  "closed_mesh_volumes": {
+    "CitadelFoundation": 20592.0,
+    "CurtainWalls": 3931.199999999995,
+    "Battlements": 286.0000000000009,
+    "WallButtresses": 806.3999999999968,
+    "PalaceWings": 3640.0,
+    "TowerWalls": 15230.329987826017,
+    "TowerBases": 1154.8431666699962
+  }
+}
