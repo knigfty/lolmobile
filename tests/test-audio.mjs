@@ -1,7 +1,7 @@
 import {readFileSync,existsSync} from 'node:fs';
 import assert from 'node:assert/strict';
-const source=readFileSync(new URL('./garen-audio.js',import.meta.url),'utf8');
-const {createGarenAudio}=await import('data:text/javascript,'+encodeURIComponent(source.replaceAll('import.meta.url',JSON.stringify(new URL('./garen-audio.js',import.meta.url).href))));
+const source=readFileSync(new URL('../scripts/audio/garen-audio.js',import.meta.url),'utf8');
+const {createGarenAudio}=await import('data:text/javascript,'+encodeURIComponent(source.replaceAll('import.meta.url',JSON.stringify(new URL('../scripts/audio/garen-audio.js',import.meta.url).href))));
 let now=0;const played=[];
 class MockAudio{constructor(url){this.url=url;this.paused=false;assert(existsSync(new URL(url)))}play(){played.push(this);return Promise.resolve()}pause(){this.paused=true}}
 const audio=createGarenAudio({AudioClass:MockAudio,time:()=>now,random:()=>.999});
@@ -52,7 +52,7 @@ count=played.length;complete(music);assert.equal(played.length,count+1);
 const tail=played.at(-1);dancing=false;audio.endDance();assert(tail.paused);audio.attack('Attack1');
 count=played.length;complete(tail);assert.equal(played.length,count);audio.stop();
 // Integration: hit sound is once per pulse, outside the multiple-target loop.
-const arena=readFileSync(new URL('./index.html',import.meta.url),'utf8');
+const arena=readFileSync(new URL('../index.html',import.meta.url),'utf8');
 const pulse=arena.slice(arena.indexOf('function spinPulse()'),arena.indexOf('// Recognize the held combo'));
 assert(pulse.includes('for(const t of hits)damageTarget(t);\n  if(hits.length)garenAudio.spinHit();'));
 assert(arena.includes('garenAudio.spinEnd();'));

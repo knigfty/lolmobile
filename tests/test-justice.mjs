@@ -1,7 +1,7 @@
 import {readFileSync} from 'node:fs';
 import {runInNewContext} from 'node:vm';
 import assert from 'node:assert/strict';
-const source=readFileSync(new URL('./index.html',import.meta.url),'utf8');
+const source=readFileSync(new URL('../index.html',import.meta.url),'utf8');
 const damage=source.slice(source.indexOf('function damageTarget('),source.indexOf('function updateTargetHealth('));
 const justice=source.slice(source.indexOf('function justice()'),source.indexOf('function spin()'));
 function scenario(hp=10){

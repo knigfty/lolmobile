@@ -20,7 +20,7 @@ export function createGarenAudio({AudioClass=globalThis.Audio,time=()=>performan
         if(movement&&(time()<movementReadyAt||[...active].some(entry=>entry.movement)))continue;
         for(const entry of [...active])if(!entry.sfx)stop(entry);
       }
-      const audio=new AudioClass(new URL(`./Assets/Audio/Garen_Audio/${file}`,import.meta.url).href);
+      const audio=new AudioClass(new URL(`../../Assets/Audio/Garen_Audio/${file}`,import.meta.url).href);
       const entry={audio,rank,movement,group,sfx};active.add(entry);
       audio.onerror=()=>finish(entry);
       audio.onended=()=>{

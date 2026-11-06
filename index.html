@@ -10,7 +10,7 @@
 <div id="ui"><div id="top"><div><div id="brand">3D PLAYGROUND</div><a id="settings-link" href="/settings" aria-label="Settings" title="Settings"><svg viewBox="0 0 24 24" width="25" height="25" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M9 3h6l.6 2.6 2.3 1.3 2.5-.8 3 5.2-1.9 1.8v2.6l1.9 1.8-3 5.2-2.5-.8-2.3 1.3L15 26H9l-.6-2.6-2.3-1.3-2.5.8-3-5.2 1.9-1.8v-2.6L.6 11.5l3-5.2 2.5.8 2.3-1.3z" transform="translate(2 0) scale(.78)"/><circle cx="11.4" cy="11.4" r="3.2"/></svg></a></div><div id="stats">Targets hit: <strong id="hits">0</strong><br>Action: <strong id="state">Idle</strong></div></div><div id="message"></div><div id="bottom"><div id="joystick"><div id="stick"></div></div><div id="buttons"><button class="action" id="skill">SPIN</button><button class="action" id="justice">JUSTICE</button><button class="action" id="attack">ATTACK</button><button class="action" id="dance">DANCE</button></div></div><div id="help">Desktop: WASD / arrows · Space attack · E spin · R justice · F dance · Scroll / pinch to zoom</div></div>
 <script type="module">
 import {containsPosition,constrainPosition} from './Assets/Map/citadel-collision.mjs';
-import {createGarenAudio} from './garen-audio.js';
+import {createGarenAudio} from './scripts/audio/garen-audio.js';
 const garenAudio=createGarenAudio();
 import * as THREE from 'three';import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 const scene=new THREE.Scene();scene.background=new THREE.Color(0xb2cdd8);scene.fog=new THREE.Fog(0xb2cdd8,75,210);

@@ -1,7 +1,7 @@
 import {readFileSync} from 'node:fs';
 import assert from 'node:assert/strict';
-import {constrainPosition,containsPosition} from './Assets/Map/citadel-collision.mjs';
-const layout=JSON.parse(readFileSync(new URL('./Assets/Map/Metadata/citadel-layout.json',import.meta.url)));
+import {constrainPosition,containsPosition} from '../Assets/Map/citadel-collision.mjs';
+const layout=JSON.parse(readFileSync(new URL('../Assets/Map/Metadata/citadel-layout.json',import.meta.url)));
 const radius=.4;
 assert(containsPosition({x:layout.spawn[0],z:layout.spawn[2]},radius,layout));
 for(const direction of [{x:1,z:0},{x:-1,z:0},{x:0,z:1},{x:0,z:-1},{x:1,z:1},{x:-1,z:-1}]){
@@ -31,7 +31,7 @@ for(const obstacle of layout.obstacles){
 }
 // Movement reaches well beyond the retired 10.9 radius without exiting the castle.
 const p={x:0,z:12};for(let i=0;i<90;i++){p.z+=.18;constrainPosition(p,radius,layout)}assert(p.z>27);
-const glb=readFileSync(new URL('./Assets/Map/Models/demacian_citadel.glb',import.meta.url));
+const glb=readFileSync(new URL('../Assets/Map/Models/demacian_citadel.glb',import.meta.url));
 assert.equal(glb.toString('ascii',0,4),'glTF');assert.equal(glb.readUInt32LE(8),glb.length);
 const jsonLength=glb.readUInt32LE(12),gltf=JSON.parse(glb.toString('utf8',20,20+jsonLength));
 assert(!gltf.buffers.some(b=>b.uri));assert(gltf.images.every(i=>i.bufferView!==undefined));
