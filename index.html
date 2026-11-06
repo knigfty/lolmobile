@@ -9,6 +9,8 @@
 <div id="loading"><div class="spin"></div><h1>GAREN ARENA</h1><p id="loadText">Preparing your character...</p></div>
 <div id="ui"><div id="top"><div><div id="brand">3D PLAYGROUND</div><a id="settings-link" href="/settings" aria-label="Settings" title="Settings"><svg viewBox="0 0 24 24" width="25" height="25" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M9 3h6l.6 2.6 2.3 1.3 2.5-.8 3 5.2-1.9 1.8v2.6l1.9 1.8-3 5.2-2.5-.8-2.3 1.3L15 26H9l-.6-2.6-2.3-1.3-2.5.8-3-5.2 1.9-1.8v-2.6L.6 11.5l3-5.2 2.5.8 2.3-1.3z" transform="translate(2 0) scale(.78)"/><circle cx="11.4" cy="11.4" r="3.2"/></svg></a></div><div id="stats">Targets hit: <strong id="hits">0</strong><br>Action: <strong id="state">Idle</strong></div></div><div id="message"></div><div id="bottom"><div id="joystick"><div id="stick"></div></div><div id="buttons"><button class="action" id="skill">SPIN</button><button class="action" id="justice">JUSTICE</button><button class="action" id="attack">ATTACK</button><button class="action" id="dance">DANCE</button></div></div><div id="help">Desktop: WASD / arrows · Space attack · E spin · R justice · F dance · Scroll / pinch to zoom</div></div>
 <script type="module">
+import {clone as cloneSkeleton} from 'three/addons/utils/SkeletonUtils.js';
+import {createDummyAnimations} from './scripts/objects/dummy-animations.mjs';
 import {containsPosition,constrainPosition} from './Assets/Map/citadel-collision.mjs';
 import {createGarenAudio} from './scripts/audio/garen-audio.js';
 const garenAudio=createGarenAudio();
@@ -16,14 +18,31 @@ import * as THREE from 'three';import {GLTFLoader} from 'three/addons/loaders/GL
 const scene=new THREE.Scene();scene.background=new THREE.Color(0xb2cdd8);scene.fog=new THREE.Fog(0xb2cdd8,75,210);
 const camera=new THREE.PerspectiveCamera(55,innerWidth/innerHeight,.1,330);const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.35;document.body.prepend(renderer.domElement);
 scene.add(new THREE.HemisphereLight(0xe9f7ff,0x52654c,2.2));const sun=new THREE.DirectionalLight(0xffedc6,2.8);sun.position.set(-5,12,8);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);sun.shadow.camera.left=-27;sun.shadow.camera.right=27;sun.shadow.camera.top=27;sun.shadow.camera.bottom=-27;sun.shadow.camera.near=1;sun.shadow.camera.far=160;sun.shadow.normalBias=.018;sun.shadow.bias=-.00008;sun.shadow.camera.updateProjectionMatrix();scene.add(sun,sun.target);
-const targetMat=new THREE.MeshStandardMaterial({color:0xc17c58,roughness:.7,metalness:.12});const targets=[];for(const [x,z] of [[4,-3],[-4,-4],[5,5],[-5,4],[0,-7]]){const group=new THREE.Group();group.position.set(x,0,z);const base=new THREE.Mesh(new THREE.CylinderGeometry(.65,.8,.3,10),new THREE.MeshStandardMaterial({color:0x554f43}));base.position.y=.15;group.add(base);const body=new THREE.Mesh(new THREE.CylinderGeometry(.38,.46,1.2,10),targetMat.clone());body.position.y=1.03;body.castShadow=true;group.add(body);const head=new THREE.Mesh(new THREE.SphereGeometry(.35,12,8),targetMat.clone());head.position.y=1.85;head.castShadow=true;group.add(head);scene.add(group);const visual=new THREE.Group();group.remove(base,body,head);visual.add(base,body,head);group.add(visual);
+const targets=[];
+for(const [x,z] of [[4,-3],[-4,-4],[5,5],[-5,4],[0,-7]]){
+const group=new THREE.Group();group.position.set(x,0,z);scene.add(group);
+const visual=new THREE.Group();group.add(visual);
 const healthBar=new THREE.Group();
 const red=new THREE.Mesh(new THREE.PlaneGeometry(1.25,.15),new THREE.MeshBasicMaterial({color:0xd63838,depthTest:false}));
 const green=new THREE.Mesh(new THREE.PlaneGeometry(1.25,.15),new THREE.MeshBasicMaterial({color:0x35d05b,depthTest:false}));
 green.position.z=.002;red.renderOrder=10;green.renderOrder=11;healthBar.add(red,green);healthBar.visible=false;scene.add(healthBar);
-const rubble=new THREE.Group();visual.add(rubble);rubble.visible=false;
-for(let i=0;i<8;i++){const piece=new THREE.Mesh(new THREE.BoxGeometry(.22+(i%3)*.06,.2,.24),targetMat.clone());piece.castShadow=true;rubble.add(piece)}
-targets.push({group,visual,base,body,head,rubble,healthBar,green,maxHp:10,hp:10,cool:0,hitboxRadius:.8,lastHit:-Infinity,hurtX:0,hurtZ:0,destroyAt:null})}
+targets.push({group,visual,healthBar,green,maxHp:10,hp:10,cool:0,hitboxRadius:.8,lastHit:-Infinity,destroyAt:null,animator:null})}
+function attachDummyModels(gltf){
+  targets.forEach((target,index)=>{
+    // SkeletonUtils makes independent bones for each skinned target instance.
+    const model=cloneSkeleton(gltf.scene);
+    model.updateMatrixWorld(true);
+    const bounds=new THREE.Box3().setFromObject(model),height=bounds.max.y-bounds.min.y;
+    if(!Number.isFinite(height)||height<=0)throw new Error('Target dummy has invalid model bounds');
+    const scale=2.2/height;
+    model.position.y-=bounds.min.y;target.visual.scale.setScalar(scale);
+    model.traverse(object=>{if(object.isMesh){object.castShadow=true;object.receiveShadow=true}});
+    target.visual.add(model);
+    target.animator=createDummyAnimations({mixer:new THREE.AnimationMixer(model),clips:gltf.animations,LoopOnce:THREE.LoopOnce,
+      idleOffset:index,onDeathFinished:()=>{target.group.visible=false;target.healthBar.visible=false}});
+    target.animator.spawn();
+  });
+}
 const player=new THREE.Group();scene.add(player);let mixer,actions={},current='',lockUntil=0,hitCount=0;const clock=new THREE.Clock();const keys=new Set();let stickX=0,stickY=0,attackIndex=0,now=0;const stateEl=document.getElementById('state'),hitsEl=document.getElementById('hits');let toastTimeout,damageTimer=null;
 
 const CONTROL_DEFAULTS={left:['KeyA','ArrowLeft'],down:['KeyS','ArrowDown'],right:['KeyD','ArrowRight'],up:['KeyW','ArrowUp'],attack:['Space'],spin:['KeyE'],dance:['KeyF'],justice:['KeyR']};
@@ -137,47 +156,27 @@ function damageTarget(t,damage=1){
   const time=inputTime();
   t.hp=Math.max(0,t.hp-damage);hitCount++;hitsEl.textContent=hitCount;
   t.lastHit=time;
-  const dx=t.group.position.x-player.position.x,dz=t.group.position.z-player.position.z,length=Math.hypot(dx,dz)||1;
-  t.hurtX=dx/length;t.hurtZ=dz/length;
   t.healthBar.visible=true;updateTargetHealth(t);
   toast(t.hp<=0?'TARGET DOWN!':'HIT!');
-  if(t.hp<=0){t.destroyAt=time;t.cool=time+4}
+  if(t.hp<=0){t.destroyAt=time;t.cool=time+Math.max(4,(t.animator?.deathDuration||0)+.5);t.animator?.die()}
+  else t.animator?.hit();
 
 }
 function updateTargetHealth(t){
   const fraction=Math.max(0,Math.min(1,t.hp/t.maxHp));
   t.green.scale.x=fraction;t.green.position.x=-1.25*(1-fraction)/2;
 }
-function updateTargets(){
+function updateTargets(dt){
   const time=inputTime();
   for(const t of targets){
     if(t.hp<=0&&time>t.cool&&!overlapsTarget(player.position,t)){
       t.hp=t.maxHp;t.group.visible=true;t.destroyAt=null;t.lastHit=-Infinity;
-      t.visual.position.set(0,0,0);t.visual.rotation.set(0,0,0);t.visual.scale.setScalar(1);
-      t.base.visible=t.body.visible=t.head.visible=true;t.rubble.visible=false;updateTargetHealth(t);
+      t.animator.spawn();updateTargetHealth(t);
     }
-    const age=time-t.lastHit;
-    t.healthBar.visible=age<3;
-    t.healthBar.position.set(t.group.position.x,2.5,t.group.position.z);
+    t.animator?.update(dt);
+    t.healthBar.visible=t.group.visible&&time-t.lastHit<3;
+    t.healthBar.position.set(t.group.position.x,2.55,t.group.position.z);
     t.healthBar.quaternion.copy(camera.quaternion);
-    if(t.destroyAt!==null){
-      const progress=Math.min(1,(time-t.destroyAt)/1.1);
-      t.visual.rotation.x=t.visual.rotation.z=0;
-      t.body.scale.setScalar(Math.max(.01,1-progress));t.head.scale.setScalar(Math.max(.01,1-progress));
-      t.body.position.y=1.03-progress*1.4;t.head.position.y=1.85-progress*2.2;
-      t.base.scale.y=Math.max(.01,1-progress);t.rubble.visible=true;
-      t.rubble.children.forEach((piece,i)=>{
-        const angle=i*Math.PI/4;
-        piece.position.set(Math.cos(angle)*progress*.85,Math.sin(progress*Math.PI)*(.35+(i%3)*.1)-progress*.25,Math.sin(angle)*progress*.85);
-        piece.rotation.set(progress*(i+1),progress*i,progress*(i%3));piece.scale.setScalar(Math.max(.01,1-progress*.8));
-      });
-      if(progress>=1)t.group.visible=false;
-    }else{
-      const hurt=age<.45?Math.sin(age/.45*Math.PI)*Math.exp(-age*4)*.3:0;
-      t.visual.rotation.x=t.hurtZ*hurt;t.visual.rotation.z=-t.hurtX*hurt;
-      const color=age<.12?0xffe5a3:0xc17c58;t.body.material.color.setHex(color);t.head.material.color.setHex(color);
-      t.base.scale.set(1,1,1);t.body.scale.setScalar(1);t.head.scale.setScalar(1);t.body.position.y=1.03;t.head.position.y=1.85;
-    }
   }
 }
 function spell1SpeedMultiplier(){
@@ -536,6 +535,10 @@ async function loadGame(){
     scene.add(map.scene);
     player.position.set(...mapLayout.spawn);
     camera.position.set(player.position.x,16,player.position.z+22);
+    loadingAsset='target dummy';
+    document.getElementById('loadText').textContent='Loading target dummies…';
+    const dummy=await loader.loadAsync('./Assets/Objects/target_dummy.glb');
+    attachDummyModels(dummy);
     loadingAsset='champion';
     document.getElementById('loadText').textContent='Loading champion…';
     const embedded=document.getElementById('embedded-model');
@@ -551,6 +554,7 @@ function fail(err){
   console.error(`Could not load ${loadingAsset}`,err);
   document.getElementById('loadText').textContent=loadingAsset==='map'
     ?'Could not load map. Check the citadel model and layout under Assets/Map are included in this deployment, then reload.'
+    :loadingAsset==='target dummy'?'Could not load target dummy. Check Assets/Objects/target_dummy.glb and its animations, then reload.'
     :'Could not load champion. Check Assets/Champs/garen.glb is included in this deployment, then reload.';
   document.querySelector('#loading .spin').style.display='none';
 }
@@ -583,7 +587,7 @@ function animate(){
     if(!spell1Target)player.rotation.y+=diff*Math.min(1,dt*12);
     if(now>=lockUntil&&!spell1Target)play(runSpellActive()?'Run_Spell1':'Run_Base');
   }else if(now>=lockUntil&&!spell1Target)play('Idle1_Base');
-  updateTargets();
+  updateTargets(dt);
   if(mixer){
     updateAnimationBlend();
     mixer.update(dt);

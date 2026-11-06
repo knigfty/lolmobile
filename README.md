@@ -22,4 +22,10 @@ Development checks live in `tests/`; the browser does not load these files. Run 
 node tests/test-audio.mjs
 node tests/test-justice.mjs
 node tests/test-citadel.mjs
+node tests/test-dummy.mjs
 ```
+
+
+## Target dummies
+
+The game loads `Assets/Objects/target_dummy.glb` once, then clones its skeleton for each target. Each copy has an independent animation mixer controlled by `scripts/objects/dummy-animations.mjs`. Spawn plays on initial appearance and respawn; the three supplied idle clips cycle between hits; Hit restarts on nonlethal damage; lethal damage plays Death to completion and hides the target. Targets retain 10 HP, collision, health bars and the four-second respawn delay (respawn waits if the champion occupies their position). The visuals normalize to 2.2 units high without modifying the source GLB or its clips.
