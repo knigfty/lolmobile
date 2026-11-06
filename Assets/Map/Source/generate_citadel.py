@@ -97,10 +97,6 @@ plane_tiles('CourtyardPaving',0,0,64,76,0,11)
 # Main axial avenue and the central ceremonial training circle.
 plane_tiles('MarbleAvenues',0,11,10,52,.012,1)
 plane_tiles('MarbleAvenues',0,7,58,6,.014,1)
-ring('TrainingInlays',0,0,7.8,8.0,.023,3)
-ring('TrainingInlays',0,0,8.3,8.4,.023,1)
-for a in range(8):
- u=a*math.tau/8;box('TrainingInlays',6.5*math.cos(u),.025,6.5*math.sin(u),.5,.025,.5,3)
 # Four sunken-looking garden panels are actually flush with paving.
 for x in [-20,20]:
  for z in [2,23]:

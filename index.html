@@ -19,7 +19,7 @@ const scene=new THREE.Scene();scene.background=new THREE.Color(0xb2cdd8);scene.f
 const camera=new THREE.PerspectiveCamera(55,innerWidth/innerHeight,.1,330);const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.35;document.body.prepend(renderer.domElement);
 scene.add(new THREE.HemisphereLight(0xe9f7ff,0x52654c,2.2));const sun=new THREE.DirectionalLight(0xffedc6,2.8);sun.position.set(-5,12,8);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);sun.shadow.camera.left=-27;sun.shadow.camera.right=27;sun.shadow.camera.top=27;sun.shadow.camera.bottom=-27;sun.shadow.camera.near=1;sun.shadow.camera.far=160;sun.shadow.normalBias=.018;sun.shadow.bias=-.00008;sun.shadow.camera.updateProjectionMatrix();scene.add(sun,sun.target);
 const targets=[];
-for(const [x,z] of [[4,-3],[-4,-4],[5,5],[-5,4],[0,-7]]){
+for(const [x,z] of [[-23,20],[-17,20],[-20,23],[-23,26],[-17,26]]){
 const group=new THREE.Group();group.position.set(x,0,z);scene.add(group);
 const visual=new THREE.Group();group.add(visual);
 const healthBar=new THREE.Group();
@@ -517,6 +517,10 @@ async function loadGame(){
     mapLayout=await layoutResponse.json();
     const map=await loader.loadAsync('./Assets/Map/Models/demacian_citadel.glb?v=2');
     map.scene.name='DemacianCitadel';
+    // Remove retired training rings and markers from existing map exports.
+    const trainingInlays=[];
+    map.scene.traverse(object=>{if(object.name==='TrainingInlays')trainingInlays.push(object)});
+    for(const object of trainingInlays)object.removeFromParent();
     map.scene.traverse(object=>{
       if(object.isMesh){
         object.receiveShadow=true;

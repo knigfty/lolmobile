@@ -18,7 +18,7 @@ Retired forest map assets and their generator have been removed. Only the citade
 
 The enclosing walls span 64 × 76 game units. The playable rectangle follows their inside faces, with an additional player-radius inset. Towers, the keep, palace wings, fountains and guardian plinths are solid. The southern gate is closed. All courtyard movement remains at Y=0. The great hall is accessible through its southern front portal only. Its roof cuts away inside. The throne dais and wall-top walkways are decorative and inaccessible.
 
-The player spawns at (0, 0, 12). Training dummies stay near the center. Scenery extends roughly 260 units across, beyond the walls, with cliffs, trees and mountain silhouettes. The camera is allowed outside player bounds. Mouse-wheel or two-finger pinch changes zoom; architecture obscuring the champion fades while retaining collision. Shadows follow the player, and the camera far plane/fog range cover the larger scene.
+The player spawns at (0, 0, 12). Five training dummies occupy the southwest (bottom-left) grass garden at X=-20, Z=23. Training rings and floor markers are removed. Scenery extends roughly 260 units across, beyond the walls, with cliffs, trees and mountain silhouettes. The camera is allowed outside player bounds. Mouse-wheel or two-finger pinch changes zoom; architecture obscuring the champion fades while retaining collision. Shadows follow the player, and the camera far plane/fog range cover the larger scene.
 
 ## Generation and validation
 
