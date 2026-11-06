@@ -1,0 +1,31 @@
+{
+  "format": "glTF 2.0 binary",
+  "triangles": 2844,
+  "meshes": 10,
+  "materials": 1,
+  "embedded_textures": 1,
+  "texture_size": [
+    512,
+    512
+  ],
+  "bytes": 537196,
+  "sha256": "5ccf5d54f4a7e2fc168fc6244444ecf4c48107f9eb3b5b63950878c4eef20b97",
+  "bounds": {
+    "min": [
+      -17,
+      -0.8,
+      -17
+    ],
+    "max": [
+      17,
+      5,
+      17
+    ]
+  },
+  "checks": {
+    "header_length": true,
+    "external_uris": false,
+    "finite_positions": true
+  },
+  "runtime_import_tested": false
+}

@@ -1,0 +1,17 @@
+{
+  "up_axis": "Y",
+  "origin": [
+    0,
+    0,
+    0
+  ],
+  "playable_radius": 11.5,
+  "visual_boundary_radius": 11.75,
+  "spawn": [
+    0,
+    0,
+    0
+  ],
+  "collision_included": false,
+  "scenery_min_radius": 12.5
+}
