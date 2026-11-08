@@ -22,6 +22,8 @@ Development checks live in `tests/`; the browser does not load these files. Run 
 node tests/test-audio.mjs
 node tests/test-justice.mjs
 node tests/test-citadel.mjs
+node tests/test-kingdom.mjs
+python tests/test-kingdom-geometry.py
 node tests/test-dummy.mjs
 ```
 
@@ -29,3 +31,7 @@ node tests/test-dummy.mjs
 ## Target dummies
 
 The game loads `Assets/Objects/target_dummy.glb` once, then clones its skeleton for each target. Each copy has an independent animation mixer controlled by `scripts/objects/dummy-animations.mjs`. Spawn plays on initial appearance and respawn; the three supplied idle clips cycle between hits; Hit restarts on nonlethal damage; lethal damage plays Death to completion and hides the target. Targets retain 10 HP, collision, health bars and the four-second respawn delay (respawn waits if the champion occupies their position). The visuals normalize to 2.2 units high without modifying the source GLB or its clips.
+
+## Kingdom map
+
+The arena now loads the reference-inspired royal kingdom exterior and enterable citadel hall. Walk north from the courtyard spawn, pass through the grand arch and continue toward the citadel. Paths between the colonnade pillars lead into the gardens on both sides. The minimap shows your position. See [map documentation](Assets/Map/README.md) for scope, scale, regeneration and verification limits.

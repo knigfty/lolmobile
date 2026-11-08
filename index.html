@@ -1,22 +1,24 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"><meta name="theme-color" content="#101d23"><title>Garen — Arena Test</title>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"><meta name="theme-color" content="#101d23"><title>LoL Mobile — Royal Kingdom</title>
 <style>
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#101d23;color:#fff;font-family:system-ui,-apple-system,Segoe UI,sans-serif;touch-action:none;user-select:none}canvas{display:block;touch-action:none}#ui{position:fixed;inset:0;pointer-events:none}#top{position:absolute;top:env(safe-area-inset-top,0px);left:0;right:0;display:flex;justify-content:space-between;align-items:flex-start;padding:15px 17px;gap:12px}#brand{font-size:12px;letter-spacing:2px;color:#f7d78a;font-weight:800}#title{font-size:21px;font-weight:900;line-height:1.15;margin-top:3px;text-shadow:0 2px 8px #0009}#sub{font-size:11px;color:#d5e5e2;margin-top:5px}#stats{text-align:right;background:#102027b8;border:1px solid #b6d5c02d;border-radius:12px;padding:9px 12px;font-size:12px;line-height:1.65}#stats strong{color:#ffe3a0}#message{position:absolute;top:23%;left:50%;transform:translateX(-50%);font-size:15px;font-weight:800;color:#ffdfa0;text-shadow:0 2px 7px #000;opacity:0;transition:opacity .18s;white-space:nowrap}#bottom{position:absolute;bottom:calc(24px + env(safe-area-inset-bottom,0px));left:0;right:0;display:flex;align-items:flex-end;justify-content:space-between;padding:0 22px;gap:20px}#joystick{pointer-events:auto;width:136px;height:136px;border-radius:50%;background:#e5f4e010;border:2px solid #e7f6e34d;position:relative;box-shadow:inset 0 0 28px #d8f6e00b}#stick{position:absolute;left:50%;top:50%;width:62px;height:62px;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle at 30% 25%,#b6e8ca80,#4b847c80);border:2px solid #e2fff0aa;box-shadow:0 5px 15px #0006}#buttons{display:grid;grid-template-columns:repeat(2,68px);gap:10px;pointer-events:auto;align-items:end}.action{width:68px;height:68px;border-radius:50%;border:2px solid #f7e0a2a0;background:radial-gradient(circle at 35% 25%,#9d774d,#403525);color:#fff5d7;font-weight:900;font-size:12px;box-shadow:0 5px 18px #0008;touch-action:none}.action:active,.action.active{filter:brightness(1.5);transform:scale(.95)}#attack{width:82px;height:82px;grid-row:2/4;grid-column:2;background:radial-gradient(circle at 30% 20%,#e4b56b,#8b4a2e);font-size:15px}#justice{grid-column:2;grid-row:1;font-size:10px;background:radial-gradient(circle at 30% 20%,#d1be70,#63552a)}#dance{grid-column:1;grid-row:2;background:radial-gradient(circle at 30% 20%,#528d8a,#26494e);border-color:#8ed3c5}#help{position:absolute;bottom:5px;left:50%;transform:translateX(-50%);width:calc(100% - 24px);text-align:center;font-size:10px;color:#e5eee9aa;white-space:normal}#loading{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:15px;background:linear-gradient(145deg,#0e1e24,#263b35);z-index:10;text-align:center;padding:20px}#loading h1{margin:0;color:#ffe1a0;letter-spacing:2px}#loading p{margin:0;color:#cbdcd5;font-size:13px}#loading .spin{width:34px;height:34px;border:3px solid #fff3;border-top-color:#ffda89;border-radius:50%;animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}@media(max-width:370px){#joystick{width:116px;height:116px}#bottom{padding:0 12px}#buttons{grid-template-columns:repeat(2,61px)}.action{width:61px;height:61px}#attack{width:74px;height:74px}}@media(min-width:800px){#bottom{max-width:950px;margin:auto}#help{font-size:12px}}
 #settings-link{pointer-events:auto;display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;margin-top:6px;border:1px solid #f7d78a66;border-radius:12px;background:#102027a8;color:#f7d78a}#settings-link:focus-visible{outline:3px solid #fff;outline-offset:3px}/* Primary touch input uses mobile controls, including landscape phones and tablets. */
 #bottom{display:none}
 @media (pointer:coarse){#bottom{display:flex}#help{display:none}}
+#kingdom-map{display:block;width:112px;height:140px;border:1px solid #e6cf9b66;border-radius:6px;margin-top:10px}#kingdom-zone{font-size:11px;color:#eadbb8;margin-top:6px;max-width:150px}@media(max-height:500px){#kingdom-map{width:72px;height:90px}}
 </style>
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"}}</script></head><body>
-<div id="loading"><div class="spin"></div><h1>GAREN ARENA</h1><p id="loadText">Preparing your character...</p></div>
-<div id="ui"><div id="top"><div><div id="brand">3D PLAYGROUND</div><a id="settings-link" href="/settings" aria-label="Settings" title="Settings"><svg viewBox="0 0 24 24" width="25" height="25" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M9 3h6l.6 2.6 2.3 1.3 2.5-.8 3 5.2-1.9 1.8v2.6l1.9 1.8-3 5.2-2.5-.8-2.3 1.3L15 26H9l-.6-2.6-2.3-1.3-2.5.8-3-5.2 1.9-1.8v-2.6L.6 11.5l3-5.2 2.5.8 2.3-1.3z" transform="translate(2 0) scale(.78)"/><circle cx="11.4" cy="11.4" r="3.2"/></svg></a></div><div id="stats">Targets hit: <strong id="hits">0</strong><br>Action: <strong id="state">Idle</strong></div></div><div id="message"></div><div id="bottom"><div id="joystick"><div id="stick"></div></div><div id="buttons"><button class="action" id="skill">SPIN</button><button class="action" id="justice">JUSTICE</button><button class="action" id="attack">ATTACK</button><button class="action" id="dance">DANCE</button></div></div><div id="help">Desktop: WASD / arrows · Space attack · E spin · R justice · F dance · Scroll / pinch to zoom</div></div>
+<div id="loading"><div class="spin"></div><h1>ROYAL KINGDOM</h1><p id="loadText">Preparing your character...</p></div>
+<div id="ui"><div id="top"><div><div id="brand">ROYAL KINGDOM</div><a id="settings-link" href="/settings" aria-label="Settings" title="Settings"><svg viewBox="0 0 24 24" width="25" height="25" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M9 3h6l.6 2.6 2.3 1.3 2.5-.8 3 5.2-1.9 1.8v2.6l1.9 1.8-3 5.2-2.5-.8-2.3 1.3L15 26H9l-.6-2.6-2.3-1.3-2.5.8-3-5.2 1.9-1.8v-2.6L.6 11.5l3-5.2 2.5.8 2.3-1.3z" transform="translate(2 0) scale(.78)"/><circle cx="11.4" cy="11.4" r="3.2"/></svg></a><div id="kingdom-zone">Royal courtyard</div><canvas id="kingdom-map" width="160" height="200" role="img" aria-label="Kingdom map showing your position and the citadel to the north"></canvas></div><div id="stats">Targets hit: <strong id="hits">0</strong><br>Action: <strong id="state">Idle</strong></div></div><div id="message"></div><div id="bottom"><div id="joystick"><div id="stick"></div></div><div id="buttons"><button class="action" id="skill">SPIN</button><button class="action" id="justice">JUSTICE</button><button class="action" id="attack">ATTACK</button><button class="action" id="dance">DANCE</button></div></div><div id="help">Desktop: WASD / arrows · Space attack · E spin · R justice · F dance · Scroll / pinch to zoom</div></div>
 <script type="module">
 import {clone as cloneSkeleton} from 'three/addons/utils/SkeletonUtils.js';
 import {createDummyAnimations} from './scripts/objects/dummy-animations.mjs';
+import {createKingdomNavigation,kingdomZone} from './scripts/kingdom-navigation.mjs';
 import {containsPosition,constrainPosition} from './Assets/Map/citadel-collision.mjs';
 import {createGarenAudio} from './scripts/audio/garen-audio.js';
 const garenAudio=createGarenAudio();
 import * as THREE from 'three';import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
-const scene=new THREE.Scene();scene.background=new THREE.Color(0xb2cdd8);scene.fog=new THREE.Fog(0xb2cdd8,75,210);
-const camera=new THREE.PerspectiveCamera(55,innerWidth/innerHeight,.1,330);const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.35;document.body.prepend(renderer.domElement);
+const scene=new THREE.Scene();scene.background=new THREE.Color(0xb2cdd8);scene.fog=new THREE.Fog(0xb2cdd8,160,620);
+const camera=new THREE.PerspectiveCamera(55,innerWidth/innerHeight,.1,1000);const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.35;document.body.prepend(renderer.domElement);
 scene.add(new THREE.HemisphereLight(0xe9f7ff,0x52654c,2.2));const sun=new THREE.DirectionalLight(0xffedc6,2.8);sun.position.set(-5,12,8);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);sun.shadow.camera.left=-27;sun.shadow.camera.right=27;sun.shadow.camera.top=27;sun.shadow.camera.bottom=-27;sun.shadow.camera.near=1;sun.shadow.camera.far=160;sun.shadow.normalBias=.018;sun.shadow.bias=-.00008;sun.shadow.camera.updateProjectionMatrix();scene.add(sun,sun.target);
 const targets=[];
 for(const [x,z] of [[-23,20],[-17,20],[-20,23],[-23,26],[-17,26]]){
@@ -91,7 +93,7 @@ function configuredAttackDuration(){
 }
 const ATTACK_DURATION=configuredAttackDuration(),ATTACK_SHORT_DURATION=ATTACK_DURATION*.5,ATTACK_HIT_PHASE=.1755;
 const PLAYER_RADIUS=.4;
-let mapLayout=null;
+let mapLayout=null,updateKingdomNavigation=null;
 let dancing=false,activeAttackName='',attackStartedAt=0,attackUntil=0,pendingAttackCommand=null;
 let attackReadyAt=0,attackRequested=false;
 const SPIN_DURATION=3,SPIN_COUNT=7;
@@ -512,10 +514,11 @@ let loadingAsset='map';
 async function loadGame(){
   try{
     document.getElementById('loadText').textContent='Loading Demacian citadel…';
-    const layoutResponse=await fetch('./Assets/Map/Metadata/citadel-layout.json?v=2');
+    const layoutResponse=await fetch('./Assets/Map/Metadata/citadel-layout.json?v=3');
     if(!layoutResponse.ok)throw new Error('Citadel collision layout could not be loaded');
     mapLayout=await layoutResponse.json();
-    const map=await loader.loadAsync('./Assets/Map/Models/demacian_citadel.glb?v=2');
+    updateKingdomNavigation=createKingdomNavigation(mapLayout);
+    const map=await loader.loadAsync('./Assets/Map/Models/demacian_citadel.glb?v=3');
     map.scene.name='DemacianCitadel';
     // Remove retired training rings and markers from existing map exports.
     const trainingInlays=[];
@@ -629,7 +632,8 @@ function animate(){
     material.depthWrite=!transparent;
   }
   // Cut away the hall roof when inside so the playable interior stays visible.
-  const insideHall=Math.hypot(player.position.x,player.position.z+22)<10.5;
+  const insideHall=kingdomZone(player.position,mapLayout)==='Citadel entrance hall';
+  updateKingdomNavigation?.(player.position,player.rotation.y,dt);
   for(const object of cameraOccluders)if(object.userData.occlusionGroup==='HallRoof')object.visible=!insideHall;
   renderer.render(scene,camera);
 }

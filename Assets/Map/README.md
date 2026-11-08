@@ -1,31 +1,40 @@
-# Demacian Citadel
+# Royal Kingdom — playable exterior and entrance hall
 
-Active map: `Models/demacian_citadel.glb`. Original, stylized architecture inspired by the two castle references: pale masonry, blue domes, gilded ribs, a high sanctum, curtain walls, lancet windows, guardians, gardens, and reflecting fountains. This is a new procedural interpretation, not an extracted game map or exact reconstruction.
+The active `Models/demacian_citadel.glb` is an original procedural, stylized blockout based on the supplied `grand-city(2).png`. It establishes the complete walkable layout, not a final-detail recreation of the reference painting.
 
-## Organization
+## Playable layout
 
-- `Models/demacian_citadel.glb`: self-contained map with embedded 1024 × 1024 texture atlas.
-- `Textures/citadel_atlas.png`: editable copy of the embedded atlas.
-- `Source/generate_citadel.py`: deterministic geometry, texture, layout, validation and preview generation (Python + numpy + Pillow).
-- `Metadata/citadel-layout.json`: wall bounds, spawn, and solid building/fountain footprints; loaded by the game.
-- `Metadata/citadel-validation.json`: geometry and file checks.
-- `citadel-collision.mjs`: player-radius collision and sliding helpers.
-- `Previews/citadel_overview.png`, `Previews/citadel_courtyard.png`: software renders of the exported geometry; not screenshots of the running game.
+- 260 × 320-unit exterior with enclosed courtyard, ceremonial plaza and central monument.
+- Two curved colonnades with 60 independently collidable columns. Players can walk through the gaps; the overhead stone beams do not block ground movement.
+- Eight formal garden parterres with intersecting paths, fountains, cypress trees and solid low hedges.
+- Monumental citadel, blue-domed towers, front guardian sculpture, and a 12-unit-wide open front doorway.
+- Entrance hall with columns, vault ribs, carpet, mosaic and a solid throne dais. The hall roof cuts away while inside; other obstructing architecture fades using the existing camera system.
+- Background city and white mountain immediately behind the citadel. Background scenery, tower interiors, roofs and wall tops are not playable.
 
-Retired forest map assets and their generator have been removed. Only the citadel is loaded.
+All movement remains at Y=0, including the portal and garden paths. Low edging is intentionally traversable; solid fountains, columns, walls, hedges and dais have matching collision footprints. The champion model and movement speed are unchanged: its rest-pose mesh is about 2.07 units high. The citadel roof reaches about 80 units. This is an inferred reference scale, not a surveyed reconstruction.
 
-## Play area and camera
+Spawn is (0, 0, 112), facing the central route. The existing five training targets remain in the plaza at their existing coordinates. A cached minimap tracks the player and labels the courtyard, plaza, gardens and hall. Desktop bindings, touch controls, combat, audio and settings are retained.
 
-The enclosing walls span 64 × 76 game units. The playable rectangle follows their inside faces, with an additional player-radius inset. Towers, the keep, palace wings, fountains and guardian plinths are solid. The southern gate is closed. All courtyard movement remains at Y=0. The great hall is accessible through its southern front portal only. Its roof cuts away inside. The throne dais and wall-top walkways are decorative and inaccessible.
+## Rebuild and checks
 
-The player spawns at (0, 0, 12). Five training dummies occupy the southwest (bottom-left) grass garden at X=-20, Z=23. Training rings and floor markers are removed. Scenery extends roughly 260 units across, beyond the walls, with cliffs, trees and mountain silhouettes. The camera is allowed outside player bounds. Mouse-wheel or two-finger pinch changes zoom; architecture obscuring the champion fades while retaining collision. Shadows follow the player, and the camera far plane/fog range cover the larger scene.
+Run from the repository root:
 
-## Generation and validation
+```sh
+python Assets/Map/Source/generate_citadel.py
+node tests/test-citadel.mjs
+node tests/test-kingdom.mjs
+python tests/test-kingdom-geometry.py
+node tests/test-audio.mjs
+node tests/test-justice.mjs
+node tests/test-dummy.mjs
+```
 
-Run `python Assets/Map/Source/generate_citadel.py` from the repository root. Replaces citadel outputs in the folders above. Run `node tests/test-citadel.mjs` to check enclosed movement, solid landmarks, spawn clearance, GLB structure, and upward courtyard normals. The export asserts positive signed volumes for closed architectural meshes, keeps the foundation below the paved ground to avoid overlapping faces, and embeds the PNG so no external textures are needed.
+Generation requires numpy and Pillow. The GLB embeds one 1024 × 1024 texture atlas. Pieces sharing an occlusion section are batched, reducing the map to 124 meshes and about 73,000 triangles. Tests enforce budgets of fewer than 200 meshes, 100,000 triangles and 9 MiB. These are geometry budgets, not measured phone frame rates.
 
-Software previews and structural tests do not verify GPU rendering or performance on a real phone. The runtime metadata accurately reports whether an in-engine import has been tested.
+`Metadata/citadel-layout.json` contains bounds, colliders, hall bounds, spawn, landmarks and six representative passage centers. Connectivity tests flood-fill the navigable map, verify cross-colonnade routes, and simulate a round trip through the portal into the hall. Existing collision and combat checks are retained.
+
+`Previews/` contains software renders of the actual generated geometry, including a hall cutaway. They are not screenshots from the running game. `Metadata/citadel-validation.json` records geometry checks and the GLB hash. Browser/WebGL and real-device performance remain unverified because the workspace preview service was unavailable.
 
 ## Provenance
 
-Original local geometry and procedural textures, seed 211. User-provided `Demacia_Citadel.jpg` and `demacia-foreground.jpg` guided architectural shapes and colors; they are not embedded or redistributed. No extracted Riot meshes, external asset packs, or paid generation services were used. Demacia and League of Legends remain associated with their respective rights holders. This provenance statement applies only to this new map.
+Geometry and textures are generated locally by `Source/generate_citadel.py` (seed 211), adapting the repository's original generator. No paid generation, downloaded model packs or extracted Riot meshes were used for this map. The user's reference is not embedded. Existing third-party assets elsewhere in the repository retain their own licensing. Demacia and League of Legends remain associated with their respective rights holders.
