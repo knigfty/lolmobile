@@ -79,7 +79,7 @@ function updateControlsHint(){
   document.getElementById('help').textContent='Desktop: '+['up','left','down','right'].map(action=>show(action)+' '+action).join(' · ')+' · '+show('attack')+' attack (hold: run spell) · '+show('spin')+' spin · '+show('justice')+' justice · '+show('dance')+' dance';
 }
 updateControlsHint();
-addEventListener('pageshow',()=>{controls=loadControls();moveKeys.clear();for(const action of ['left','down','right','up'])for(const code of controls[action])moveKeys.add(code);keys.clear();updateControlsHint()});
+addEventListener('pageshow',()=>{cameraPov=loadPov();controls=loadControls();moveKeys.clear();for(const action of ['left','down','right','up'])for(const code of controls[action])moveKeys.add(code);keys.clear();updateControlsHint()});
 
 const ATTACK_HOLD_MS=120;
 const BASE_ATTACK_CONE_COS=Math.cos(135*Math.PI/360),JUSTICE_RANGE=800;
@@ -486,6 +486,8 @@ function start(gltf){const model=gltf.scene;model.traverse(o=>{if(o.isMesh){o.ca
 const cameraOccluders=[],occlusionGroups=new Map(),cameraRay=new THREE.Raycaster();
 const cameraFocus=new THREE.Vector3();let occlusionCheck=0;
 let cameraZoom=1;
+function loadPov(){try{return localStorage.getItem('garen.pov')==='first'?'first':'third'}catch{return 'third'}}
+let cameraPov=loadPov();
 const cameraTouches=new Map();let pinchDistance=0;
 renderer.domElement.addEventListener('wheel',event=>{
   event.preventDefault();cameraZoom=Math.max(.8,Math.min(4,cameraZoom*Math.exp(event.deltaY*.001)));
@@ -606,9 +608,17 @@ function animate(){
   }
   const aspect=innerWidth/innerHeight;
   const distance=(aspect<.7?16:14)*cameraZoom;
-  const goal=new THREE.Vector3(player.position.x,distance*.72,player.position.z+distance);
-  camera.position.lerp(goal,Math.min(1,dt*3.4));
-  camera.lookAt(player.position.x,1.1,player.position.z);
+  if(cameraPov==='first'){
+    const facing=player.rotation.y;
+    camera.position.set(player.position.x,1.65,player.position.z);
+    camera.lookAt(player.position.x+Math.sin(facing)*10,1.65,player.position.z+Math.cos(facing)*10);
+    player.visible=false;
+  }else{
+    player.visible=true;
+    const goal=new THREE.Vector3(player.position.x,distance*.72,player.position.z+distance);
+    camera.position.lerp(goal,Math.min(1,dt*3.4));
+    camera.lookAt(player.position.x,1.1,player.position.z);
+  }
   // Keep the shadow frustum around the player across the larger courtyard.
   sun.position.set(player.position.x-24,48,player.position.z+20);
   sun.target.position.set(player.position.x,0,player.position.z);
