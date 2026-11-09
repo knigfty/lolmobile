@@ -491,7 +491,23 @@ addEventListener('keydown',e=>{
 addEventListener('keyup',e=>{keys.delete(e.code);if(controlMatches('attack',e.code)){e.preventDefault();endAttack()}});
 addEventListener('blur',()=>{garenAudio.stop();endAttack(true);attackPointerId=null;keys.clear();stickX=stickY=0;stick.style.transform='translate(-50%,-50%)'});
 document.addEventListener('visibilitychange',()=>{if(document.hidden)garenAudio.stop()});
-function start(gltf){const model=gltf.scene;model.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;o.frustumCulled=false;o.material.side=THREE.DoubleSide}});player.add(model);mixer=new THREE.AnimationMixer(model);for(const clip of gltf.animations)actions[clip.name]=mixer.clipAction(clip);mixer.addEventListener('finished',e=>{
+// Hide only champion fragments immediately around the first-person eye.
+// The actual animated body and sword remain visible outside this small region.
+const eyeOcclusion={value:0};
+function prepareChampionMaterial(original){
+  const material=original.clone();material.side=THREE.DoubleSide;
+  const previous=material.onBeforeCompile;
+  material.onBeforeCompile=shader=>{
+    if(previous)previous(shader);
+    shader.uniforms.uEyeOcclusion=eyeOcclusion;
+    shader.fragmentShader='uniform float uEyeOcclusion;\\n'+shader.fragmentShader;
+    shader.fragmentShader=shader.fragmentShader.replace('#include <clipping_planes_fragment>',
+      '#include <clipping_planes_fragment>\\nif (uEyeOcclusion > 0.5 && length(vViewPosition) < 0.42) discard;');
+  };
+  material.customProgramCacheKey=()=> 'champion-eye-occlusion-v1';
+  return material;
+}
+function start(gltf){const model=gltf.scene;model.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;o.frustumCulled=false;o.material=Array.isArray(o.material)?o.material.map(prepareChampionMaterial):prepareChampionMaterial(o.material)}});player.add(model);mixer=new THREE.AnimationMixer(model);for(const clip of gltf.animations)actions[clip.name]=mixer.clipAction(clip);mixer.addEventListener('finished',e=>{
   if(dancing&&current==='Dance_Base'&&e.action===actions.Dance_Base){
     play('Dance_Loop_BASE',.12);
     garenAudio.danceLoop(()=>dancing&&current==='Dance_Loop_BASE');
@@ -654,7 +670,8 @@ function animate(){
     }
   }
   updateLook(dt);
-  if(cameraPov==='first'&&!spell1Target)alignFirstPersonAttack();
+  if(cameraPov==='first')alignFirstPersonAttack();
+  eyeOcclusion.value=cameraPov==='first'?1:0;
   const aspect=innerWidth/innerHeight;
   // Zoom distance is independent of champion size and never exceeds 300 units.
   if(cameraPov==='first'){
@@ -665,7 +682,7 @@ function animate(){
     // the near plane inside a target or wall when the champion is touching it.
     // Eye-level camera, slightly ahead of the face to avoid seeing inside the
     // champion's head while preserving the real animated torso, arms and sword.
-    camera.position.set(player.position.x+forward.x*.34,1.65,player.position.z+forward.z*.34);
+    camera.position.set(player.position.x+forward.x*.12,1.65,player.position.z+forward.z*.12);
     // Back the eye away from any nearby live dummy along the view direction.
     // This prevents its surface crossing the near plane at collision distance.
     // Leave wall collision and player position untouched.
