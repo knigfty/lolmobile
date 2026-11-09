@@ -601,6 +601,14 @@ function animate(){
   if(moving&&(now>=lockUntil||isSpinAnimation(current))){
     x/=Math.max(1,len);y/=Math.max(1,len);
     const speed=4.5*(inputTime()<runSpellUntil?1.35:1)*spell1SpeedMultiplier();
+    // In first person, strafe and walk relative to the camera's horizontal heading.
+    // Camera pitch must not affect ground movement speed.
+    if(cameraPov==='first'){
+      const heading=Math.PI-cameraYaw;
+      const worldX=-x*Math.cos(heading)-y*Math.sin(heading);
+      const worldZ=x*Math.sin(heading)-y*Math.cos(heading);
+      x=worldX;y=worldZ;
+    }
     const previousX=player.position.x,previousZ=player.position.z;
     movePlayer(x*speed*dt,y*speed*dt);
     if(!runSpellActive()&&!spell1Target&&inputTime()>=runSpellUntil&&!isSpinAnimation(current)&&current!=='Spell4_Base'&&(player.position.x!==previousX||player.position.z!==previousZ))garenAudio.move();
@@ -636,9 +644,12 @@ function animate(){
     player.visible=false;
   }else{
     player.visible=true;
-    const orbit=new THREE.Vector3(Math.sin(cameraYaw)*distance*Math.cos(cameraPitch),distance*.72+Math.sin(cameraPitch)*distance,Math.cos(cameraYaw)*distance*Math.cos(cameraPitch));
+    // Orbit on a fixed-radius sphere: vertical dragging changes elevation, never zoom.
+    // Only wheel scrolling or a two-finger pinch changes cameraZoom.
+    const elevation=THREE.MathUtils.clamp(Math.atan(.72)-cameraPitch,.03,1.4);
+    const radius=distance*Math.sqrt(1+.72*.72);
+    const orbit=new THREE.Vector3(Math.sin(cameraYaw)*radius*Math.cos(elevation),radius*Math.sin(elevation),Math.cos(cameraYaw)*radius*Math.cos(elevation));
     const goal=player.position.clone().add(orbit);
-    goal.y=Math.max(.35,goal.y);
     camera.position.lerp(goal,Math.min(1,dt*3.4));
     camera.lookAt(player.position.x,1.1,player.position.z);
   }
