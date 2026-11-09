@@ -491,7 +491,48 @@ addEventListener('keydown',e=>{
 addEventListener('keyup',e=>{keys.delete(e.code);if(controlMatches('attack',e.code)){e.preventDefault();endAttack()}});
 addEventListener('blur',()=>{garenAudio.stop();endAttack(true);attackPointerId=null;keys.clear();stickX=stickY=0;stick.style.transform='translate(-50%,-50%)'});
 document.addEventListener('visibilitychange',()=>{if(document.hidden)garenAudio.stop()});
-function start(gltf){const model=gltf.scene;model.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;o.frustumCulled=false;(Array.isArray(o.material)?o.material:[o.material]).forEach(material=>{material.side=THREE.DoubleSide})}});player.add(model);mixer=new THREE.AnimationMixer(model);for(const clip of gltf.animations)actions[clip.name]=mixer.clipAction(clip);mixer.addEventListener('finished',e=>{
+// The source GLB contains one skinned mesh: isolate its detached T-pose sword
+// by rest-pose vertex coordinates, keeping the original texture/material.
+const firstPersonSword=new THREE.Group();camera.add(firstPersonSword);scene.add(camera);
+firstPersonSword.visible=false;
+const championMeshParts=[];
+function separateChampionSword(mesh){
+  const geometry=mesh.geometry,position=geometry.getAttribute('position');
+  if(!position||!geometry.getAttribute('skinIndex'))return;
+  const source=geometry.getIndex();
+  const indices=source?Array.from(source.array):Array.from({length:position.count},(_,i)=>i);
+  const sword=[],body=[],firstBody=[];
+  for(let i=0;i<indices.length;i+=3){
+    const tri=indices.slice(i,i+3);
+    const xs=tri.map(j=>position.getX(j));
+    const isSword=xs.every(x=>x<-.70);
+    if(isSword){sword.push(...tri);continue}
+    body.push(...tri);
+    // Exclude head/neck geometry only in first person; this prevents animated
+    // facial and hair meshes from intersecting the eye camera.
+    const head=tri.every(j=>position.getY(j)>1.49&&Math.abs(position.getX(j))<.23&&position.getZ(j)>-.31);
+    if(!head)firstBody.push(...tri);
+  }
+  if(!sword.length)return;
+  const fullGeometry=geometry;
+  const bodyGeometry=geometry.clone();bodyGeometry.setIndex(body);
+  const firstGeometry=geometry.clone();firstGeometry.setIndex(firstBody);
+  const swordGeometry=geometry.clone();swordGeometry.setIndex(sword);
+  // Convert skinned sword to a regular static mesh in T-pose geometry.
+  const swordMaterial=Array.isArray(mesh.material)?mesh.material.map(m=>m.clone()):mesh.material.clone();
+  const viewSword=new THREE.Mesh(swordGeometry,swordMaterial);
+  viewSword.frustumCulled=false;viewSword.castShadow=false;
+  firstPersonSword.add(viewSword);
+  // Local T-pose sword starts at x=-.85; bring the grip to viewmodel origin.
+  viewSword.position.set(.85,-.05,0);
+  championMeshParts.push({mesh,fullGeometry,bodyGeometry,firstGeometry});
+}
+function updateChampionPovMeshes(){
+  const first=cameraPov==='first';
+  for(const part of championMeshParts)part.mesh.geometry=first?part.firstGeometry:part.fullGeometry;
+  firstPersonSword.visible=first;
+}
+function start(gltf){const model=gltf.scene;model.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;o.frustumCulled=false;(Array.isArray(o.material)?o.material:[o.material]).forEach(material=>{material.side=THREE.DoubleSide})}});player.add(model);model.traverse(o=>{if(o.isSkinnedMesh)separateChampionSword(o)});updateChampionPovMeshes();mixer=new THREE.AnimationMixer(model);for(const clip of gltf.animations)actions[clip.name]=mixer.clipAction(clip);mixer.addEventListener('finished',e=>{
   if(dancing&&current==='Dance_Base'&&e.action===actions.Dance_Base){
     play('Dance_Loop_BASE',.12);
     garenAudio.danceLoop(()=>dancing&&current==='Dance_Loop_BASE');
@@ -681,8 +722,17 @@ function animate(){
       }
     }
     camera.lookAt(camera.position.clone().add(forward));
+    updateChampionPovMeshes();
+    const swinging=!!activeAttackName||current==='Spell1';
+    const clip=actions[activeAttackName||'Spell1'];
+    const phase=swinging&&clip?clip.time/Math.max(.01,clip.getClip().duration):0;
+    const arc=swinging?Math.sin(Math.min(1,phase)*Math.PI):0;
+    const bob=Math.sin(inputTime()*9)*.018*(movementInput().moving?1:0);
+    firstPersonSword.position.set(.40-.25*arc,-1.00+.24*arc+bob,-.75-.10*arc);
+    firstPersonSword.rotation.set(-.18-.85*arc,0,-.30-1.15*arc);
     player.visible=true;
   }else{
+    updateChampionPovMeshes();
     player.visible=true;
     // Orbit on a fixed-radius sphere: vertical dragging changes elevation, never zoom.
     // Only wheel scrolling or a two-finger pinch changes cameraZoom.
