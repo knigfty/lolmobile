@@ -500,9 +500,9 @@ function prepareChampionMaterial(original){
   material.onBeforeCompile=shader=>{
     if(previous)previous(shader);
     shader.uniforms.uEyeOcclusion=eyeOcclusion;
-    shader.fragmentShader='uniform float uEyeOcclusion;\\n'+shader.fragmentShader;
+    shader.fragmentShader='uniform float uEyeOcclusion;\n'+shader.fragmentShader;
     shader.fragmentShader=shader.fragmentShader.replace('#include <clipping_planes_fragment>',
-      '#include <clipping_planes_fragment>\\nif (uEyeOcclusion > 0.5 && length(vViewPosition) < 0.42) discard;');
+      '#include <clipping_planes_fragment>\nif (uEyeOcclusion > 0.5 && length(vViewPosition) < 0.42) discard;');
   };
   material.customProgramCacheKey=()=> 'champion-eye-occlusion-v1';
   return material;
