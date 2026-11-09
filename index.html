@@ -651,6 +651,7 @@ function fail(err){
   document.querySelector('#loading .spin').style.display='none';
 }
 loadGame();
+let firstPersonMovementBlend=0;
 function animate(){
   requestAnimationFrame(animate);
   const dt=Math.min(clock.getDelta(),.05);now+=dt;
@@ -757,7 +758,10 @@ function animate(){
     // Move the resting weapon inward and slightly farther from the camera so
     // its hilt and blade remain visible without changing the desktop pose.
     const portrait=THREE.MathUtils.clamp((.9-aspect)/.45,0,1);
-    const restPitch=THREE.MathUtils.degToRad(moving?20:10);
+    // Ease the first-person sword between idle (10°) and moving (20°).
+    // Frame-rate-independent damping prevents a sudden angle jump.
+    firstPersonMovementBlend=THREE.MathUtils.damp(firstPersonMovementBlend,moving?1:0,10,dt);
+    const restPitch=THREE.MathUtils.degToRad(10+10*firstPersonMovementBlend);
     const restX=-Math.PI/2+restPitch;
     const restPX=.43-.23*portrait+sway;
     const restPY=-.68+.18*portrait+bob;
