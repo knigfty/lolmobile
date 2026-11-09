@@ -488,25 +488,43 @@ const cameraFocus=new THREE.Vector3();let occlusionCheck=0;
 let cameraZoom=1;
 function loadPov(){try{return localStorage.getItem('garen.pov')==='first'?'first':'third'}catch{return 'third'}}
 let cameraPov=loadPov();
+// Drag displacement acts as a virtual look stick: holding off-centre keeps turning.
+let cameraYaw=0,cameraPitch=0,lookPointer=null;
+const LOOK_DEADZONE=5,LOOK_FULL_SPEED_DISTANCE=140,LOOK_MAX_SPEED=2.5;
 const cameraTouches=new Map();let pinchDistance=0;
+function updateLook(dt){
+  if(!lookPointer||cameraTouches.size>1)return;
+  const dx=lookPointer.x-lookPointer.startX,dy=lookPointer.y-lookPointer.startY;
+  const turn=value=>Math.sign(value)*Math.min(1,Math.max(0,Math.abs(value)-LOOK_DEADZONE)/LOOK_FULL_SPEED_DISTANCE)*LOOK_MAX_SPEED*dt;
+  cameraYaw+=turn(dx);
+  cameraPitch=THREE.MathUtils.clamp(cameraPitch+turn(dy),-1.35,1.35);
+}
 renderer.domElement.addEventListener('wheel',event=>{
   event.preventDefault();cameraZoom=Math.max(.8,Math.min(4,cameraZoom*Math.exp(event.deltaY*.001)));
 },{passive:false});
 renderer.domElement.addEventListener('pointerdown',event=>{
-  if(event.pointerType!=='touch')return;
+  if(event.pointerType==='mouse'&&event.button!==0)return;
   renderer.domElement.setPointerCapture(event.pointerId);
-  cameraTouches.set(event.pointerId,{x:event.clientX,y:event.clientY});pinchDistance=0;
+  if(event.pointerType==='touch'){
+    cameraTouches.set(event.pointerId,{x:event.clientX,y:event.clientY});
+    pinchDistance=0;
+    if(cameraTouches.size>1){lookPointer=null;return}
+  }
+  if(!lookPointer)lookPointer={id:event.pointerId,startX:event.clientX,startY:event.clientY,x:event.clientX,y:event.clientY};
 });
 renderer.domElement.addEventListener('pointermove',event=>{
-  if(!cameraTouches.has(event.pointerId))return;
-  cameraTouches.set(event.pointerId,{x:event.clientX,y:event.clientY});
-  if(cameraTouches.size===2){
-    const [a,b]=[...cameraTouches.values()],distance=Math.hypot(a.x-b.x,a.y-b.y);
-    if(pinchDistance>0&&distance>0)cameraZoom=Math.max(.8,Math.min(4,cameraZoom*pinchDistance/distance));
-    pinchDistance=distance;
+  if(cameraTouches.has(event.pointerId)){
+    cameraTouches.set(event.pointerId,{x:event.clientX,y:event.clientY});
+    if(cameraTouches.size===2){
+      const [a,b]=[...cameraTouches.values()],distance=Math.hypot(a.x-b.x,a.y-b.y);
+      if(pinchDistance>0&&distance>0)cameraZoom=Math.max(.8,Math.min(4,cameraZoom*pinchDistance/distance));
+      pinchDistance=distance;
+    }
   }
+  if(lookPointer?.id===event.pointerId){lookPointer.x=event.clientX;lookPointer.y=event.clientY}
 });
 for(const eventName of ['pointerup','pointercancel','lostpointercapture'])renderer.domElement.addEventListener(eventName,event=>{
+  if(lookPointer?.id===event.pointerId)lookPointer=null;
   cameraTouches.delete(event.pointerId);pinchDistance=0;
 });
 const loader=new GLTFLoader();
@@ -606,16 +624,20 @@ function animate(){
       mixer.update(0);
     }
   }
+  updateLook(dt);
   const aspect=innerWidth/innerHeight;
   const distance=(aspect<.7?16:14)*cameraZoom;
   if(cameraPov==='first'){
-    const facing=player.rotation.y;
+    // Positive horizontal drag looks right; upward drag raises the view.
+    const yaw=Math.PI-cameraYaw;
+    const forward=new THREE.Vector3(Math.sin(yaw)*Math.cos(cameraPitch),Math.sin(cameraPitch),Math.cos(yaw)*Math.cos(cameraPitch));
     camera.position.set(player.position.x,1.65,player.position.z);
-    camera.lookAt(player.position.x+Math.sin(facing)*10,1.65,player.position.z+Math.cos(facing)*10);
+    camera.lookAt(camera.position.clone().add(forward));
     player.visible=false;
   }else{
     player.visible=true;
-    const goal=new THREE.Vector3(player.position.x,distance*.72,player.position.z+distance);
+    const orbit=new THREE.Vector3(Math.sin(cameraYaw)*distance*Math.cos(cameraPitch),distance*.72+Math.sin(cameraPitch)*distance,Math.cos(cameraYaw)*distance*Math.cos(cameraPitch));
+    const goal=player.position.clone().add(orbit);
     camera.position.lerp(goal,Math.min(1,dt*3.4));
     camera.lookAt(player.position.x,1.1,player.position.z);
   }
