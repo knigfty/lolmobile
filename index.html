@@ -515,29 +515,36 @@ function separateChampionSword(mesh){
   }
   if(!sword.length)return;
   const fullGeometry=geometry;
-  const bodyGeometry=geometry.clone();bodyGeometry.setIndex(body);
   const firstGeometry=geometry.clone();firstGeometry.setIndex(firstBody);
-  const swordGeometry=geometry.clone();swordGeometry.setIndex(sword);
   // Convert skinned sword to a regular static mesh in T-pose geometry.
-  const swordMaterial=Array.isArray(mesh.material)?mesh.material.map(m=>m.clone()):mesh.material.clone();
-  const viewSword=new THREE.Mesh(swordGeometry,swordMaterial);
-  viewSword.frustumCulled=false;viewSword.castShadow=false;
-  firstPersonSword.add(viewSword);
-  // Local T-pose sword starts at x=-.85; bring the grip to viewmodel origin.
-  viewSword.position.set(.85,-.05,0);
-  championMeshParts.push({mesh,fullGeometry,bodyGeometry,firstGeometry});
+  championMeshParts.push({mesh,fullGeometry,firstGeometry});
 }
 function updateChampionPovMeshes(){
   const first=cameraPov==='first';
   for(const part of championMeshParts)part.mesh.geometry=first?part.firstGeometry:part.fullGeometry;
   firstPersonSword.visible=first;
 }
+async function loadFirstPersonSword(){
+  const sword=await loader.loadAsync('./Assets/Objects/garen_sword.glb');
+  const root=sword.scene;
+  root.updateMatrixWorld(true);
+  const bounds=new THREE.Box3().setFromObject(root);
+  if(bounds.isEmpty())throw new Error('First-person sword has no visible geometry');
+  const size=bounds.getSize(new THREE.Vector3());
+  // The exported sword is vertical. Put its handle at the local origin,
+  // normalize to a consistent viewmodel size, and preserve its real materials.
+  const scale=1.45/Math.max(.001,size.y);
+  root.position.set(-bounds.getCenter(new THREE.Vector3()).x*scale,-bounds.min.y*scale,-bounds.getCenter(new THREE.Vector3()).z*scale);
+  root.scale.setScalar(scale);
+  root.traverse(o=>{if(o.isMesh){o.frustumCulled=false;o.castShadow=false}});
+  firstPersonSword.add(root);
+}
 function start(gltf){const model=gltf.scene;model.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;o.frustumCulled=false;(Array.isArray(o.material)?o.material:[o.material]).forEach(material=>{material.side=THREE.DoubleSide})}});player.add(model);model.traverse(o=>{if(o.isSkinnedMesh)separateChampionSword(o)});updateChampionPovMeshes();mixer=new THREE.AnimationMixer(model);for(const clip of gltf.animations)actions[clip.name]=mixer.clipAction(clip);mixer.addEventListener('finished',e=>{
   if(dancing&&current==='Dance_Base'&&e.action===actions.Dance_Base){
     play('Dance_Loop_BASE',.12);
     garenAudio.danceLoop(()=>dancing&&current==='Dance_Loop_BASE');
   }
-});play('Idle1_Base',0);document.getElementById('loading').remove();animate()}
+});play('Idle1_Base',0);loadFirstPersonSword().then(()=>{document.getElementById('loading').remove();animate()}).catch(error=>{console.error('Could not load first-person sword',error);document.getElementById('loadText').textContent='Could not load Assets/Objects/garen_sword.glb. Check the sword file and reload.';document.querySelector('#loading .spin').style.display='none'})}
 // Camera zoom has no collision clamp: it can look beyond the closed castle walls.
 const cameraOccluders=[],occlusionGroups=new Map(),cameraRay=new THREE.Raycaster();
 const cameraFocus=new THREE.Vector3();let occlusionCheck=0;
