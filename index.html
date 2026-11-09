@@ -36,7 +36,11 @@ function attachDummyModels(gltf){
     if(!Number.isFinite(height)||height<=0)throw new Error('Target dummy has invalid model bounds');
     const scale=2.2/height;
     model.position.y-=bounds.min.y;target.visual.scale.setScalar(scale);
-    model.traverse(object=>{if(object.isMesh){object.castShadow=true;object.receiveShadow=true}});
+    model.traverse(object=>{if(object.isMesh){object.castShadow=true;object.receiveShadow=true;
+      // Animated skinned mesh bounds can be wrong when seen at contact distance.
+      object.frustumCulled=false;
+      if(object.material){const materials=Array.isArray(object.material)?object.material:[object.material];for(const material of materials)material.side=THREE.DoubleSide}
+    }});
     target.visual.add(model);
     target.animator=createDummyAnimations({mixer:new THREE.AnimationMixer(model),clips:gltf.animations,LoopOnce:THREE.LoopOnce,
       idleOffset:index,onDeathFinished:()=>{target.group.visible=false;target.healthBar.visible=false}});
@@ -617,9 +621,11 @@ function animate(){
     // Both POVs use the camera's horizontal direction for movement.
     // Camera pitch never changes walking speed.
     {
-      const heading=Math.PI-cameraYaw;
-      const worldX=-x*Math.cos(heading)-y*Math.sin(heading);
-      const worldZ=x*Math.sin(heading)-y*Math.cos(heading);
+      // Third-person camera looks inward from its orbit position; first-person
+      // camera looks outward. Their horizontal forward vectors are opposite.
+      const sine=Math.sin(cameraYaw),cosine=Math.cos(cameraYaw);
+      const worldX=cameraPov==='first'?x*cosine-y*sine:x*cosine+y*sine;
+      const worldZ=cameraPov==='first'?x*sine+y*cosine:-x*sine+y*cosine;
       x=worldX;y=worldZ;
     }
     const previousX=player.position.x,previousZ=player.position.z;
@@ -655,6 +661,20 @@ function animate(){
     // Keep the eye at the collision body's center; moving it backwards can put
     // the near plane inside a target or wall when the champion is touching it.
     camera.position.set(player.position.x,1.65,player.position.z);
+    // Back the eye away from any nearby live dummy along the view direction.
+    // This prevents its surface crossing the near plane at collision distance.
+    // Leave wall collision and player position untouched.
+    for(const target of targets){
+      if(target.hp<=0||!target.group.visible)continue;
+      const toTarget=new THREE.Vector3(target.group.position.x-camera.position.x,0,target.group.position.z-camera.position.z);
+      const forwardFlat=new THREE.Vector3(forward.x,0,forward.z).normalize();
+      const ahead=toTarget.dot(forwardFlat);
+      const side=toTarget.clone().addScaledVector(forwardFlat,-ahead).length();
+      if(ahead>0&&ahead<1.65&&side<target.hitboxRadius+.25){
+        const retreat=Math.min(.45,Math.max(0,1.65-ahead)*.45);
+        camera.position.addScaledVector(forwardFlat,-retreat);
+      }
+    }
     camera.lookAt(camera.position.clone().add(forward));
     player.visible=false;
     const weaponAction=activeAttackName||current==='Spell1'?'attack':null;
