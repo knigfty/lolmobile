@@ -535,7 +535,8 @@ async function loadFirstPersonSword(){
   const size=bounds.getSize(new THREE.Vector3());
   // The exported sword is vertical. Put its handle at the local origin,
   // normalize to a consistent viewmodel size, and preserve its real materials.
-  const scale=1.45/Math.max(.001,size.y);
+  // Garen's sword is nearly champion-height; retain its imposing silhouette.
+  const scale=1.85/Math.max(.001,size.y);
   root.position.set(-bounds.getCenter(new THREE.Vector3()).x*scale,-bounds.min.y*scale,-bounds.getCenter(new THREE.Vector3()).z*scale);
   root.scale.setScalar(scale);
   root.traverse(o=>{if(o.isMesh){o.frustumCulled=false;o.castShadow=false}});
@@ -794,20 +795,18 @@ function animate(){
       const strike=smooth(THREE.MathUtils.clamp(phase/ATTACK_HIT_PHASE,0,1));
       // Finish recovery before the action ends, leaving a settled resting pose.
       const recovery=smooth(THREE.MathUtils.clamp((phase-ATTACK_HIT_PHASE)/(.84-ATTACK_HIT_PHASE),0,1));
-      const topX=-Math.PI/2+THREE.MathUtils.degToRad(60);
+      const topX=-Math.PI/2+THREE.MathUtils.degToRad(78);
       const bottomX=-Math.PI/2-THREE.MathUtils.degToRad(40);
-      // Full-screen diagonal slashes on portrait phones, matching the
-      // reference: Attack2 travels upper-left -> lower-right (red);
-      // Attack1 travels upper-right -> lower-left (green).
-      // The right-hand wind-up is slightly narrower because the grip
-      // already sits at screen-right; its follow-through remains broad.
-      const leftTop=THREE.MathUtils.lerp(1.30,1.22,portrait);
-      const rightTop=THREE.MathUtils.lerp(1.30,.92,portrait);
-      const followThrough=THREE.MathUtils.lerp(1.32,1.22,portrait);
-      const topZ=-.08-side*(side===1?rightTop:leftTop);
-      const bottomZ=-.08+side*followThrough;
-      const topY=side*THREE.MathUtils.lerp(.52,.37,portrait);
-      const bottomY=-side*THREE.MathUtils.lerp(.48,.34,portrait);
+      // Prioritize a tall overhead wind-up and a steep downward cut.
+      // Keep the left/right diagonal distinct, but avoid a mostly sideways
+      // sweep. The enlarged blade stays readable on portrait displays.
+      const topArc=THREE.MathUtils.lerp(.82,.53,portrait);
+      const rightArc=THREE.MathUtils.lerp(.72,.40,portrait);
+      const bottomArc=THREE.MathUtils.lerp(.86,.62,portrait);
+      const topZ=-.08-side*(side===1?rightArc:topArc);
+      const bottomZ=-.08+side*bottomArc;
+      const topY=side*THREE.MathUtils.lerp(.29,.19,portrait);
+      const bottomY=-side*THREE.MathUtils.lerp(.31,.21,portrait);
       const strikeX=THREE.MathUtils.lerp(topX,bottomX,strike);
       const strikeY=THREE.MathUtils.lerp(topY,bottomY,strike);
       const strikeZ=THREE.MathUtils.lerp(topZ,bottomZ,strike);
