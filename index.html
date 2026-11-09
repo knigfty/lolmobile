@@ -804,9 +804,12 @@ function animate(){
       const rightArc=THREE.MathUtils.lerp(.72,.40,portrait);
       const bottomArc=THREE.MathUtils.lerp(.86,.62,portrait);
       const topZ=-.08-side*(side===1?rightArc:topArc);
-      const bottomZ=-.08+side*bottomArc;
+      // Attack2 (top-left): preserve the overhead starting pose, but cut
+      // steeply down the screen instead of sweeping too far to the right.
+      // Attack1 (top-right) retains its existing trajectory.
+      const bottomZ=-.08+side*(side===-1?bottomArc*.62:bottomArc);
       const topY=side*THREE.MathUtils.lerp(.29,.19,portrait);
-      const bottomY=-side*THREE.MathUtils.lerp(.31,.21,portrait);
+      const bottomY=-side*(side===-1?THREE.MathUtils.lerp(.17,.11,portrait):THREE.MathUtils.lerp(.31,.21,portrait));
       const strikeX=THREE.MathUtils.lerp(topX,bottomX,strike);
       const strikeY=THREE.MathUtils.lerp(topY,bottomY,strike);
       const strikeZ=THREE.MathUtils.lerp(topZ,bottomZ,strike);
@@ -814,7 +817,10 @@ function animate(){
       // move forward during the strike, then ease back as the sword recovers.
       // This prevents a positional snap when the attack animation ends.
       px=restPX;
-      py=restPY;
+      // A downward body-weight follow-through gives the top-left strike a
+      // longer vertical path. Ease the grip back during recovery so it
+      // reconnects exactly with idle/walking without snapping.
+      py=restPY-(side===-1?.38*strike*(1-recovery):0);
       pz=restPZ-.12*(1-recovery);
       rx=THREE.MathUtils.lerp(strikeX,restX,recovery);
       ry=THREE.MathUtils.lerp(strikeY,0,recovery);
