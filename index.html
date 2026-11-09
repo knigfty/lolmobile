@@ -220,7 +220,7 @@ function updateRunSpell(){
   }
   if(!runSpellArmed)return;
   if(time>=runSpellUntil){endRunSpell(runSpellUntil);return}
-  const forward=new THREE.Vector3(0,0,1).applyQuaternion(player.quaternion);
+  const forward=attackForward();
   let nearest=null,nearestDistance=Infinity;
   for(const t of targets){
     if(t.hp<=0||!t.group.visible)continue;
@@ -276,6 +276,7 @@ function updateAttack(){
 }
 function requestBaseAttack(){
   if(activeAttackName||inputTime()<attackReadyAt)return;
+  alignFirstPersonAttack();
   cancelDance();
   const name=attackIndex?'Attack2':'Attack1';
   action(name,.78,true);
@@ -364,10 +365,20 @@ function cancelActionForMovement(newCommand=false){
   current='';
   play('Run_Base',0);
 }
+// First-person attacks use the camera's horizontal heading, not the last
+// movement direction. Keep the animated champion and hit detection aligned.
+function attackForward(){
+  if(cameraPov==='first')return new THREE.Vector3(Math.sin(Math.PI-cameraYaw),0,Math.cos(Math.PI-cameraYaw));
+  return new THREE.Vector3(0,0,1).applyQuaternion(player.quaternion);
+}
+function alignFirstPersonAttack(){
+  if(cameraPov==='first')player.rotation.y=Math.PI-cameraYaw;
+}
 function action(name,duration,damage){
   cancelDance();
   if(!mixer||now<lockUntil||runSpellActive()||spell1Target)return;
   lockUntil=now+(name.startsWith('Attack')?actions[name].getClip().duration:duration);
+  if(name.startsWith('Attack'))alignFirstPersonAttack();
   play(name,.12,true);
   if(name.startsWith('Attack')){
     garenAudio.attack(name);
@@ -625,7 +636,8 @@ function animate(){
     const desired=Math.atan2(x,y);
     const delta=desired-player.rotation.y;
     const diff=Math.atan2(Math.sin(delta),Math.cos(delta));
-    if(!spell1Target)player.rotation.y+=diff*Math.min(1,dt*12);
+    if(!spell1Target&&cameraPov!=='first')player.rotation.y+=diff*Math.min(1,dt*12);
+    else if(!spell1Target&&cameraPov==='first')alignFirstPersonAttack();
     if(now>=lockUntil&&!spell1Target)play(runSpellActive()?'Run_Spell1':'Run_Base');
   }else if(now>=lockUntil&&!spell1Target)play('Idle1_Base');
   updateTargets(dt);
@@ -642,6 +654,7 @@ function animate(){
     }
   }
   updateLook(dt);
+  if(cameraPov==='first'&&!spell1Target)alignFirstPersonAttack();
   const aspect=innerWidth/innerHeight;
   // Zoom distance is independent of champion size and never exceeds 300 units.
   if(cameraPov==='first'){
