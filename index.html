@@ -780,18 +780,19 @@ function animate(){
       // Then rotate continuously back to the current idle/moving pose.
       const side=name==='Attack2'?-1:1;
       const strike=smooth(THREE.MathUtils.clamp(phase/ATTACK_HIT_PHASE,0,1));
-      const recovery=smooth(THREE.MathUtils.clamp((phase-ATTACK_HIT_PHASE)/(1-ATTACK_HIT_PHASE),0,1));
+      // Finish recovery before the action ends, leaving a settled resting pose.
+      const recovery=smooth(THREE.MathUtils.clamp((phase-ATTACK_HIT_PHASE)/(.84-ATTACK_HIT_PHASE),0,1));
       const topX=-Math.PI/2+THREE.MathUtils.degToRad(60);
       const bottomX=-Math.PI/2-THREE.MathUtils.degToRad(40);
-      // On narrow mobile screens reduce the lateral arc and shift the grip
-      // toward the screen centre, particularly for the upper-right strike.
-      const arcWidth=THREE.MathUtils.lerp(.95,.47,portrait);
-      // Preserve Attack2 (top-left) exactly; pull Attack1's top-right
-      // wind-up inward on portrait screens so the blade remains on-camera.
-      const topZ=-.08-side*(side===1?arcWidth*(1-.58*portrait):arcWidth);
+      // Broaden the blade sweep while keeping the grip anchored. Portrait
+      // screens retain a narrower arc so most of the blade remains visible.
+      const arcWidth=THREE.MathUtils.lerp(1.18,.68,portrait);
+      // Allow a larger top-left arc; limit only the right-hand wind-up
+      // enough to keep the top-right attack readable on portrait screens.
+      const topZ=-.08-side*(side===1?arcWidth*(1-.48*portrait):arcWidth);
       const bottomZ=-.08+side*arcWidth;
-      const topY=side*THREE.MathUtils.lerp(.34,.18,portrait);
-      const bottomY=-side*THREE.MathUtils.lerp(.30,.16,portrait);
+      const topY=side*THREE.MathUtils.lerp(.49,.29,portrait);
+      const bottomY=-side*THREE.MathUtils.lerp(.43,.25,portrait);
       const strikeX=THREE.MathUtils.lerp(topX,bottomX,strike);
       const strikeY=THREE.MathUtils.lerp(topY,bottomY,strike);
       const strikeZ=THREE.MathUtils.lerp(topZ,bottomZ,strike);
