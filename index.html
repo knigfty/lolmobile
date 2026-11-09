@@ -778,15 +778,18 @@ function animate(){
       const strike=smooth(THREE.MathUtils.clamp(phase/ATTACK_HIT_PHASE,0,1));
       const recovery=smooth(THREE.MathUtils.clamp((phase-ATTACK_HIT_PHASE)/(1-ATTACK_HIT_PHASE),0,1));
       const topX=-Math.PI/2+THREE.MathUtils.degToRad(72);
-      const bottomX=-Math.PI/2-THREE.MathUtils.degToRad(45);
-      const topZ=-.08-side*.95;
-      const bottomZ=-.08+side*.95;
-      const topY=side*.34;
-      const bottomY=-side*.30;
+      const bottomX=-Math.PI/2-THREE.MathUtils.degToRad(40);
+      // On narrow mobile screens reduce the lateral arc and shift the grip
+      // toward the screen centre, particularly for the upper-right strike.
+      const arcWidth=THREE.MathUtils.lerp(.95,.47,portrait);
+      const topZ=-.08-side*arcWidth;
+      const bottomZ=-.08+side*arcWidth;
+      const topY=side*THREE.MathUtils.lerp(.34,.18,portrait);
+      const bottomY=-side*THREE.MathUtils.lerp(.30,.16,portrait);
       const strikeX=THREE.MathUtils.lerp(topX,bottomX,strike);
       const strikeY=THREE.MathUtils.lerp(topY,bottomY,strike);
       const strikeZ=THREE.MathUtils.lerp(topZ,bottomZ,strike);
-      px=restPX;py=restPY;pz=restPZ;
+      px=restPX-.14*portrait;py=restPY+.04*portrait;pz=restPZ-.12*portrait;
       rx=THREE.MathUtils.lerp(strikeX,restX,recovery);
       ry=THREE.MathUtils.lerp(strikeY,0,recovery);
       rz=THREE.MathUtils.lerp(strikeZ,-.08,recovery);
