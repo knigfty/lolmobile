@@ -16,7 +16,7 @@ import {createGarenAudio} from './scripts/audio/garen-audio.js';
 const garenAudio=createGarenAudio();
 import * as THREE from 'three';import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 const scene=new THREE.Scene();scene.background=new THREE.Color(0xb2cdd8);scene.fog=new THREE.Fog(0xb2cdd8,75,210);
-const camera=new THREE.PerspectiveCamera(55,innerWidth/innerHeight,.025,330);const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.35;document.body.prepend(renderer.domElement);
+const camera=new THREE.PerspectiveCamera(55,innerWidth/innerHeight,.01,330);const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.35;document.body.prepend(renderer.domElement);
 scene.add(new THREE.HemisphereLight(0xe9f7ff,0x52654c,2.2));const sun=new THREE.DirectionalLight(0xffedc6,2.8);sun.position.set(-5,12,8);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);sun.shadow.camera.left=-27;sun.shadow.camera.right=27;sun.shadow.camera.top=27;sun.shadow.camera.bottom=-27;sun.shadow.camera.near=1;sun.shadow.camera.far=160;sun.shadow.normalBias=.018;sun.shadow.bias=-.00008;sun.shadow.camera.updateProjectionMatrix();scene.add(sun,sun.target);
 const targets=[];
 for(const [x,z] of [[-23,20],[-17,20],[-20,23],[-23,26],[-17,26]]){
@@ -614,9 +614,9 @@ function animate(){
   if(moving&&(now>=lockUntil||isSpinAnimation(current))){
     x/=Math.max(1,len);y/=Math.max(1,len);
     const speed=4.5*(inputTime()<runSpellUntil?1.35:1)*spell1SpeedMultiplier();
-    // In first person, strafe and walk relative to the camera's horizontal heading.
-    // Camera pitch must not affect ground movement speed.
-    if(cameraPov==='first'){
+    // Both POVs use the camera's horizontal direction for movement.
+    // Camera pitch never changes walking speed.
+    {
       const heading=Math.PI-cameraYaw;
       const worldX=-x*Math.cos(heading)-y*Math.sin(heading);
       const worldZ=x*Math.sin(heading)-y*Math.cos(heading);
@@ -652,8 +652,9 @@ function animate(){
     // Positive horizontal drag looks right; upward drag raises the view.
     const yaw=Math.PI-cameraYaw;
     const forward=new THREE.Vector3(Math.sin(yaw)*Math.cos(cameraPitch),-Math.sin(cameraPitch),Math.cos(yaw)*Math.cos(cameraPitch));
-    // Keep the near plane out of nearby targets, even when standing at collision range.
-    camera.position.set(player.position.x-forward.x*.18,1.65,player.position.z-forward.z*.18);
+    // Keep the eye at the collision body's center; moving it backwards can put
+    // the near plane inside a target or wall when the champion is touching it.
+    camera.position.set(player.position.x,1.65,player.position.z);
     camera.lookAt(camera.position.clone().add(forward));
     player.visible=false;
     const weaponAction=activeAttackName||current==='Spell1'?'attack':null;
@@ -689,8 +690,11 @@ function animate(){
     for(const group of occlusionGroups.values())group.hidden=false;
     for(const hit of cameraRay.intersectObjects(cameraOccluders,false))occlusionGroups.get(hit.object.userData.occlusionGroup).hidden=true;
   }
+  // In first person, fade wall geometry that reaches the eye position rather
+  // than allowing the near plane to slice through a solid wall.
   for(const group of occlusionGroups.values())for(const object of group.meshes){
-    const material=object.material,target=group.hidden ? .22 : 1;
+    const nearEye=cameraPov==='first'&&object.visible&&new THREE.Box3().setFromObject(object).distanceToPoint(camera.position)<.28;
+    const material=object.material,target=nearEye ? .08 : group.hidden ? .22 : 1;
     material.opacity=THREE.MathUtils.lerp(material.opacity,target,Math.min(1,dt*9));
     const transparent=material.opacity<.995;
     if(material.transparent!==transparent){material.transparent=transparent;material.needsUpdate=true}
