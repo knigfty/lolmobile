@@ -717,6 +717,18 @@ function animate(){
     // Eye-level camera, slightly ahead of the face to avoid seeing inside the
     // champion's head while preserving the real animated torso, arms and sword.
     camera.position.set(player.position.x+forward.x*.12,1.65,player.position.z+forward.z*.12);
+    if(spell1Target&&current==='Spell1'){
+      // First-person leap is visual only: keep player collision on the ground.
+      // The camera rises before the 45% hit tick and lands with a short jolt.
+      const spellDuration=actions.Spell1.getClip().duration;
+      const p=THREE.MathUtils.clamp((inputTime()-spell1StartedAt)/Math.max(.01,spellDuration),0,1);
+      const rise=THREE.MathUtils.smoothstep(p,0,.22);
+      const fall=1-THREE.MathUtils.smoothstep(p,.27,.45);
+      const jumpHeight=2.25*rise*fall;
+      const landing=THREE.MathUtils.clamp((p-.45)/.13,0,1);
+      const impactJolt=p>=.45&&p<.58?-.14*Math.sin(landing*Math.PI)*Math.exp(-2*landing):0;
+      camera.position.y+=jumpHeight+impactJolt;
+    }
     // Back the eye away from any nearby live dummy along the view direction.
     // This prevents its surface crossing the near plane at collision distance.
     // Leave wall collision and player position untouched.
@@ -773,7 +785,7 @@ function animate(){
       px=restPX;py=restPY;pz=restPZ;
       rx=-Math.PI/2+THREE.MathUtils.degToRad(45);
     }
-    if(attacking||empowered){
+    if(attacking){
       // The grip remains anchored near the body throughout the full swing.
       // Start above the right shoulder (Attack1) or left shoulder (Attack2).
       // The complete top-to-bottom strike ends at the 17.55% damage tick.
@@ -808,6 +820,28 @@ function animate(){
       rx=THREE.MathUtils.lerp(strikeX,restX,recovery);
       ry=THREE.MathUtils.lerp(strikeY,0,recovery);
       rz=THREE.MathUtils.lerp(strikeZ,-.08,recovery);
+    }
+    if(empowered){
+      // Spell1 uses the same clip duration and 45% impact as third person:
+      // raise the sword beyond the top of the view during the leap, then
+      // bring the blade straight down into the ground just right of centre.
+      const lift=smooth(THREE.MathUtils.clamp(phase/.24,0,1));
+      const plunge=smooth(THREE.MathUtils.clamp((phase-.29)/(.45-.29),0,1));
+      const settle=smooth(THREE.MathUtils.clamp((phase-.55)/(.96-.55),0,1));
+      const raisedX=-Math.PI/2+THREE.MathUtils.degToRad(105);
+      const groundedX=-Math.PI/2-THREE.MathUtils.degToRad(82);
+      const preX=THREE.MathUtils.lerp(restX,raisedX,lift);
+      rx=THREE.MathUtils.lerp(preX,groundedX,plunge);
+      rx=THREE.MathUtils.lerp(rx,restX,settle);
+      // Hilt lifts above the camera, then drops hard toward the floor.
+      const liftY=1.42*lift*(1-plunge);
+      const dropY=-1.13*plunge*(1-settle);
+      px=THREE.MathUtils.lerp(restPX,.14,plunge);
+      px=THREE.MathUtils.lerp(px,restPX,settle);
+      py=restPY+liftY+dropY;
+      pz=restPZ-.22*(1-settle);
+      ry=0;
+      rz=THREE.MathUtils.lerp(-.08,.09,plunge)*(1-settle)-.08*settle;
     }
     if(spinning){
       // Keep the blade's length exactly horizontal throughout the sweep.
