@@ -744,50 +744,46 @@ function animate(){
     const runEmpowered=runSpellActive()||current==='Run_Spell1';
     const name=attacking?activeAttackName:empowered?'Spell1':judging?'Spell4_Base':spinning?(activeSpinName||'Spell3_0'):null;
     const clip=name?actions[name]:null;
-    const phase=clip?THREE.MathUtils.clamp(clip.time/Math.max(.01,clip.getClip().duration),0,1):0;
+    // Match the third-person combat timeline, including attack-speed settings.
+    // The animation mixer can blend into idle before the attack actually ends,
+    // so use attackStartedAt and ATTACK_DURATION instead of clip.time.
+    const duration=attacking?ATTACK_DURATION:clip?clip.getClip().duration:1;
+    const elapsed=attacking?t-attackStartedAt:judging?Math.max(0,clip?.time||0):empowered?Math.max(0,t-spell1StartedAt):0;
+    const phase=THREE.MathUtils.clamp(elapsed/Math.max(.01,duration),0,1);
     const smooth=p=>p*p*(3-2*p);
-    // Default: grip at lower-right, blade projecting forward parallel to ground.
+    // The sword GLB was normalized with the grip at local (0,0,0).
+    // Only rotate about this handle. Never translate the blade across screen.
     let px=.43+sway,py=-.68+bob,pz=-.76;
     let rx=-Math.PI/2,ry=0,rz=-.08;
     if(runEmpowered&&!empowered&&!attacking&&!spinning&&!judging){
-      // Empowered run: blade upright, matching the previous held-up pose.
       px=.42+sway;py=-.85+bob;pz=-.82;
       rx=-.12;rz=-.16;
     }
     if(attacking||empowered){
-      // Alternate Attack1 from upper-right and Attack2 from upper-left.
-      // The blade sweeps diagonally down across the centre of the view.
-      const fromRight=empowered||name==='Attack1';
-      const side=fromRight?1:-1;
+      // Attack1 and Attack2 swing in opposite directions, around the grip.
+      // Wind up quickly, swing through at the same speed as third person,
+      // then recover without sliding the sword through space.
+      const side=name==='Attack2'?-1:1;
       const p=smooth(phase);
-      px=side*(.56-.98*p)+sway;
-      py=.02-.90*p+bob;
-      pz=-.94-.12*Math.sin(phase*Math.PI);
-      rx=-.25-1.35*p;
-      ry=side*(.20-.40*p);
-      rz=side*(-.66+1.35*p);
+      px=side*.45+sway;py=-.59+bob;pz=-.85;
+      rx=-.22-1.42*p;
+      ry=side*(.32-.66*p);
+      rz=side*(-.83+1.65*p);
     }
     if(spinning){
-      // Rapid horizontal 360-degree sweeps about the view's vertical axis.
-      // Only the weapon rotates; camera yaw/pitch never change.
-      const elapsed=Math.max(0,t-spinStartedAt);
-      const angle=elapsed*Math.PI*2*3.3;
-      px=.05+.30*Math.cos(angle);
-      py=-.60+bob;
-      pz=-.86+.23*Math.sin(angle);
+      // Grip stays close to the body. Blade sweeps a full horizontal circle
+      // around that fixed pivot; camera orientation is never modified.
+      const turns=Math.max(0,t-spinStartedAt)*SPIN_COUNT/SPIN_DURATION;
+      px=.25+sway;py=-.65+bob;pz=-.73;
       rx=-Math.PI/2;
-      ry=angle;
+      ry=turns*Math.PI*2;
       rz=0;
     }
     if(judging){
-      // Judgement: turn the tip down and plunge it toward the ground.
+      // Center the grip, aim tip down, then thrust into the ground.
       const p=smooth(phase);
-      px=.25+sway;
-      py=-.05-1.15*p;
-      pz=-.88;
-      rx=Math.PI-.12;
-      ry=0;
-      rz=-.12;
+      px=0;py=-.08-1.15*p;pz=-1.15;
+      rx=Math.PI-.08;ry=0;rz=0;
     }
     firstPersonSword.position.set(px,py,pz);
     firstPersonSword.rotation.set(rx,ry,rz,'YXZ');
