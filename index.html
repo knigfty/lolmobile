@@ -521,7 +521,9 @@ function separateChampionSword(mesh){
 }
 function updateChampionPovMeshes(){
   const first=cameraPov==='first';
-  for(const part of championMeshParts)part.mesh.geometry=first?part.firstGeometry:part.fullGeometry;
+  // Only the dedicated sword viewmodel is rendered in first person.
+  // Keep the champion in the scene for animation/gameplay, but hide its render.
+  player.visible=!first;
   firstPersonSword.visible=first;
 }
 async function loadFirstPersonSword(){
@@ -730,14 +732,21 @@ function animate(){
     }
     camera.lookAt(camera.position.clone().add(forward));
     updateChampionPovMeshes();
-    const swinging=!!activeAttackName||current==='Spell1';
-    const clip=actions[activeAttackName||'Spell1'];
+    const spinning=!!activeSpinName||current.startsWith('Spell3');
+    const justice=current==='Spell4_Base';
+    const empowered=current==='Spell1';
+    const swinging=!!activeAttackName||empowered||spinning||justice;
+    const clip=actions[activeAttackName||(empowered?'Spell1':spinning?(activeSpinName||'Spell3_0'):justice?'Spell4_Base':'Idle1_Base')];
     const phase=swinging&&clip?clip.time/Math.max(.01,clip.getClip().duration):0;
     const arc=swinging?Math.sin(Math.min(1,phase)*Math.PI):0;
-    const bob=Math.sin(inputTime()*9)*.018*(movementInput().moving?1:0);
-    firstPersonSword.position.set(.40-.25*arc,-1.00+.24*arc+bob,-.75-.10*arc);
-    firstPersonSword.rotation.set(-.18-.85*arc,0,-.30-1.15*arc);
-    player.visible=true;
+    const moving=movementInput().moving;
+    const t=inputTime();
+    const bob=Math.sin(t*(moving?10:2.2))*(moving?.035:.008);
+    const sway=Math.sin(t*(moving?5:1.5))*(moving?.035:.008);
+    firstPersonSword.position.set(.43-.19*arc+sway,-.80+.18*arc+bob,-.88-.12*arc);
+    firstPersonSword.rotation.set(-.12-.65*arc,spinning?Math.sin(t*12)*.38:0,-.18-(spinning?Math.sin(t*13)*.75:justice?.95*arc:.90*arc));
+    // Never display the champion mesh in first person, even while attacking.
+    player.visible=false;
   }else{
     updateChampionPovMeshes();
     player.visible=true;
