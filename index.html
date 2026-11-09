@@ -761,7 +761,7 @@ function animate(){
     const restX=-Math.PI/2+restPitch;
     const restPX=.43-.23*portrait+sway;
     const restPY=-.68+.18*portrait+bob;
-    const restPZ=-.76-.36*portrait;
+    const restPZ=-.60-.25*portrait;
     let px=restPX,py=restPY,pz=restPZ;
     let rx=restX,ry=0,rz=-.08;
     if(runEmpowered&&!empowered&&!attacking&&!spinning&&!judging){
@@ -770,23 +770,32 @@ function animate(){
       rx=-Math.PI/2+THREE.MathUtils.degToRad(45);
     }
     if(attacking||empowered){
-      // Keep the handle fixed at the resting grip. The tip drops to 45
-      // degrees BELOW horizontal at the exact 17.55% damage timestamp.
-      // Then smoothly return to the appropriate idle/walking pose.
+      // The grip remains anchored near the body throughout the full swing.
+      // Start above the right shoulder (Attack1) or left shoulder (Attack2).
+      // The complete top-to-bottom strike ends at the 17.55% damage tick.
+      // Then rotate continuously back to the current idle/moving pose.
       const side=name==='Attack2'?-1:1;
       const strike=smooth(THREE.MathUtils.clamp(phase/ATTACK_HIT_PHASE,0,1));
       const recovery=smooth(THREE.MathUtils.clamp((phase-ATTACK_HIT_PHASE)/(1-ATTACK_HIT_PHASE),0,1));
-      const swing=strike*(1-recovery);
+      const topX=-Math.PI/2+THREE.MathUtils.degToRad(72);
+      const bottomX=-Math.PI/2-THREE.MathUtils.degToRad(45);
+      const topZ=-.08-side*.95;
+      const bottomZ=-.08+side*.95;
+      const topY=side*.34;
+      const bottomY=-side*.30;
+      const strikeX=THREE.MathUtils.lerp(topX,bottomX,strike);
+      const strikeY=THREE.MathUtils.lerp(topY,bottomY,strike);
+      const strikeZ=THREE.MathUtils.lerp(topZ,bottomZ,strike);
       px=restPX;py=restPY;pz=restPZ;
-      rx=THREE.MathUtils.lerp(restX,-Math.PI/2-THREE.MathUtils.degToRad(45),swing);
-      ry=side*.28*swing;
-      rz=-.08+side*1.25*swing;
+      rx=THREE.MathUtils.lerp(strikeX,restX,recovery);
+      ry=THREE.MathUtils.lerp(strikeY,0,recovery);
+      rz=THREE.MathUtils.lerp(strikeZ,-.08,recovery);
     }
     if(spinning){
       // Grip stays close to the body. Blade sweeps a full horizontal circle
       // around that fixed pivot; camera orientation is never modified.
       const turns=Math.max(0,t-spinStartedAt)*SPIN_COUNT/SPIN_DURATION;
-      px=.25+sway;py=-.65+bob;pz=-.73;
+      px=.25+sway;py=-.28+bob;pz=-.60;
       rx=-Math.PI/2;
       ry=turns*Math.PI*2;
       rz=0;
@@ -794,7 +803,7 @@ function animate(){
     if(judging){
       // Center the grip, aim tip down, then thrust into the ground.
       const p=smooth(phase);
-      px=0;py=-.08-1.15*p;pz=-1.15;
+      px=0;py=-.08-1.15*p;pz=-.98;
       rx=Math.PI-.08;ry=0;rz=0;
     }
     firstPersonSword.position.set(px,py,pz);
