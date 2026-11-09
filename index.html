@@ -757,30 +757,30 @@ function animate(){
     // Move the resting weapon inward and slightly farther from the camera so
     // its hilt and blade remain visible without changing the desktop pose.
     const portrait=THREE.MathUtils.clamp((.9-aspect)/.45,0,1);
-    let px=.43-.23*portrait+sway,py=-.68+.18*portrait+bob,pz=-.76-.36*portrait;
-    // The local blade points +Y; -70 degrees around X gives a 20-degree
-    // upward pitch from the horizontal ground plane.
-    let rx=-Math.PI/2+THREE.MathUtils.degToRad(20),ry=0,rz=-.08;
+    const restPitch=THREE.MathUtils.degToRad(moving?20:10);
+    const restX=-Math.PI/2+restPitch;
+    const restPX=.43-.23*portrait+sway;
+    const restPY=-.68+.18*portrait+bob;
+    const restPZ=-.76-.36*portrait;
+    let px=restPX,py=restPY,pz=restPZ;
+    let rx=restX,ry=0,rz=-.08;
     if(runEmpowered&&!empowered&&!attacking&&!spinning&&!judging){
-      px=.42+sway;py=-.85+bob;pz=-.82;
-      rx=-.12;rz=-.16;
+      // RunSpell1: 45 degrees above horizontal, still visible in portrait.
+      px=restPX;py=restPY;pz=restPZ;
+      rx=-Math.PI/2+THREE.MathUtils.degToRad(45);
     }
     if(attacking||empowered){
-      // Attack1 and Attack2 swing in opposite directions, around the grip.
-      // Wind up quickly, swing through at the same speed as third person,
-      // then recover without sliding the sword through space.
+      // Keep the handle fixed at the resting grip. The tip drops to 45
+      // degrees BELOW horizontal at the exact 17.55% damage timestamp.
+      // Then smoothly return to the appropriate idle/walking pose.
       const side=name==='Attack2'?-1:1;
-      // The strike reaches the bottom exactly at the same 17.55% hit
-      // timestamp as third-person damage. The rest is the recovery phase.
       const strike=smooth(THREE.MathUtils.clamp(phase/ATTACK_HIT_PHASE,0,1));
-      const recover=smooth(THREE.MathUtils.clamp((phase-ATTACK_HIT_PHASE)/(1-ATTACK_HIT_PHASE),0,1));
-      const swing=strike*(1-recover);
-      px=side*(.45-.12*portrait)+sway;
-      py=-.59+.10*portrait+bob;
-      pz=-.85-.24*portrait;
-      rx=-.22-1.42*swing;
-      ry=side*(.32-.66*swing);
-      rz=side*(-.83+1.65*swing);
+      const recovery=smooth(THREE.MathUtils.clamp((phase-ATTACK_HIT_PHASE)/(1-ATTACK_HIT_PHASE),0,1));
+      const swing=strike*(1-recovery);
+      px=restPX;py=restPY;pz=restPZ;
+      rx=THREE.MathUtils.lerp(restX,-Math.PI/2-THREE.MathUtils.degToRad(45),swing);
+      ry=side*.28*swing;
+      rz=-.08+side*1.25*swing;
     }
     if(spinning){
       // Grip stays close to the body. Blade sweeps a full horizontal circle
