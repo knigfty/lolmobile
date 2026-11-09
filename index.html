@@ -732,19 +732,65 @@ function animate(){
     }
     camera.lookAt(camera.position.clone().add(forward));
     updateChampionPovMeshes();
-    const spinning=!!activeSpinName||current.startsWith('Spell3');
-    const justice=current==='Spell4_Base';
+    // The imported sword's blade runs along its local +Y axis, with its grip
+    // at the origin. All first-person poses pivot around that grip.
+    const t=inputTime(),moving=movementInput().moving;
+    const bob=Math.sin(t*(moving?10:2.2))*(moving?.025:.006);
+    const sway=Math.sin(t*(moving?5:1.5))*(moving?.025:.006);
+    const spinning=!!activeSpinName||current==='Spell3_0';
+    const judging=current==='Spell4_Base';
     const empowered=current==='Spell1';
-    const swinging=!!activeAttackName||empowered||spinning||justice;
-    const clip=actions[activeAttackName||(empowered?'Spell1':spinning?(activeSpinName||'Spell3_0'):justice?'Spell4_Base':'Idle1_Base')];
-    const phase=swinging&&clip?clip.time/Math.max(.01,clip.getClip().duration):0;
-    const arc=swinging?Math.sin(Math.min(1,phase)*Math.PI):0;
-    const moving=movementInput().moving;
-    const t=inputTime();
-    const bob=Math.sin(t*(moving?10:2.2))*(moving?.035:.008);
-    const sway=Math.sin(t*(moving?5:1.5))*(moving?.035:.008);
-    firstPersonSword.position.set(.43-.19*arc+sway,-.80+.18*arc+bob,-.88-.12*arc);
-    firstPersonSword.rotation.set(-.12-.65*arc,spinning?Math.sin(t*12)*.38:0,-.18-(spinning?Math.sin(t*13)*.75:justice?.95*arc:.90*arc));
+    const attacking=!!activeAttackName;
+    const runEmpowered=runSpellActive()||current==='Run_Spell1';
+    const name=attacking?activeAttackName:empowered?'Spell1':judging?'Spell4_Base':spinning?(activeSpinName||'Spell3_0'):null;
+    const clip=name?actions[name]:null;
+    const phase=clip?THREE.MathUtils.clamp(clip.time/Math.max(.01,clip.getClip().duration),0,1):0;
+    const smooth=p=>p*p*(3-2*p);
+    // Default: grip at lower-right, blade projecting forward parallel to ground.
+    let px=.43+sway,py=-.68+bob,pz=-.76;
+    let rx=-Math.PI/2,ry=0,rz=-.08;
+    if(runEmpowered&&!empowered&&!attacking&&!spinning&&!judging){
+      // Empowered run: blade upright, matching the previous held-up pose.
+      px=.42+sway;py=-.85+bob;pz=-.82;
+      rx=-.12;rz=-.16;
+    }
+    if(attacking||empowered){
+      // Alternate Attack1 from upper-right and Attack2 from upper-left.
+      // The blade sweeps diagonally down across the centre of the view.
+      const fromRight=empowered||name==='Attack1';
+      const side=fromRight?1:-1;
+      const p=smooth(phase);
+      px=side*(.56-.98*p)+sway;
+      py=.02-.90*p+bob;
+      pz=-.94-.12*Math.sin(phase*Math.PI);
+      rx=-.25-1.35*p;
+      ry=side*(.20-.40*p);
+      rz=side*(-.66+1.35*p);
+    }
+    if(spinning){
+      // Rapid horizontal 360-degree sweeps about the view's vertical axis.
+      // Only the weapon rotates; camera yaw/pitch never change.
+      const elapsed=Math.max(0,t-spinStartedAt);
+      const angle=elapsed*Math.PI*2*3.3;
+      px=.05+.30*Math.cos(angle);
+      py=-.60+bob;
+      pz=-.86+.23*Math.sin(angle);
+      rx=-Math.PI/2;
+      ry=angle;
+      rz=0;
+    }
+    if(judging){
+      // Judgement: turn the tip down and plunge it toward the ground.
+      const p=smooth(phase);
+      px=.25+sway;
+      py=-.05-1.15*p;
+      pz=-.88;
+      rx=Math.PI-.12;
+      ry=0;
+      rz=-.12;
+    }
+    firstPersonSword.position.set(px,py,pz);
+    firstPersonSword.rotation.set(rx,ry,rz,'YXZ');
     // Never display the champion mesh in first person, even while attacking.
     player.visible=false;
   }else{
