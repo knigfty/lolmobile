@@ -630,7 +630,7 @@ function animate(){
   if(cameraPov==='first'){
     // Positive horizontal drag looks right; upward drag raises the view.
     const yaw=Math.PI-cameraYaw;
-    const forward=new THREE.Vector3(Math.sin(yaw)*Math.cos(cameraPitch),Math.sin(cameraPitch),Math.cos(yaw)*Math.cos(cameraPitch));
+    const forward=new THREE.Vector3(Math.sin(yaw)*Math.cos(cameraPitch),-Math.sin(cameraPitch),Math.cos(yaw)*Math.cos(cameraPitch));
     camera.position.set(player.position.x,1.65,player.position.z);
     camera.lookAt(camera.position.clone().add(forward));
     player.visible=false;
@@ -638,6 +638,7 @@ function animate(){
     player.visible=true;
     const orbit=new THREE.Vector3(Math.sin(cameraYaw)*distance*Math.cos(cameraPitch),distance*.72+Math.sin(cameraPitch)*distance,Math.cos(cameraYaw)*distance*Math.cos(cameraPitch));
     const goal=player.position.clone().add(orbit);
+    goal.y=Math.max(.35,goal.y);
     camera.position.lerp(goal,Math.min(1,dt*3.4));
     camera.lookAt(player.position.x,1.1,player.position.z);
   }
