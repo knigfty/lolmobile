@@ -489,22 +489,12 @@ function start(gltf){const model=gltf.scene;model.traverse(o=>{if(o.isMesh){o.ca
 // Camera zoom has no collision clamp: it can look beyond the closed castle walls.
 const cameraOccluders=[],occlusionGroups=new Map(),cameraRay=new THREE.Raycaster();
 const cameraFocus=new THREE.Vector3();let occlusionCheck=0;
-let cameraZoom=1;
+let cameraDistance=14*Math.sqrt(1+.72*.72); // Actual third-person orbit radius in world units.
+const MIN_CAMERA_DISTANCE=2.5,MAX_CAMERA_DISTANCE=300;
+
 function loadPov(){try{return localStorage.getItem('garen.pov')==='first'?'first':'third'}catch{return 'third'}}
 let cameraPov=loadPov();
-// First-person weapon viewmodel: attached to the camera so hiding the champion
-// does not hide the weapon. Render only while an attack or Spell1 is active.
-const firstPersonWeapon=new THREE.Group();camera.add(firstPersonWeapon);scene.add(camera);
-firstPersonWeapon.position.set(.48,-.47,-.8);firstPersonWeapon.rotation.set(-.28,0,-.3);
-const weaponMaterial=new THREE.MeshStandardMaterial({color:0xb8c6d1,metalness:.8,roughness:.27,depthTest:false,depthWrite:false});
-const gripMaterial=new THREE.MeshStandardMaterial({color:0x493c30,metalness:.2,roughness:.8,depthTest:false,depthWrite:false});
-const guardMaterial=new THREE.MeshStandardMaterial({color:0xd4b66d,metalness:.65,roughness:.3,depthTest:false,depthWrite:false});
-function weaponPart(geometry,material,y){const mesh=new THREE.Mesh(geometry,material);mesh.position.y=y;mesh.frustumCulled=false;mesh.renderOrder=1000;firstPersonWeapon.add(mesh)}
-weaponPart(new THREE.BoxGeometry(.055,.32,.055),gripMaterial,-.17);
-weaponPart(new THREE.BoxGeometry(.38,.055,.09),guardMaterial,.01);
-weaponPart(new THREE.BoxGeometry(.11,.84,.045),weaponMaterial,.46);
-const swordTip=new THREE.Mesh(new THREE.ConeGeometry(.075,.23,4),weaponMaterial);swordTip.rotation.y=Math.PI/4;swordTip.position.y=.98;swordTip.frustumCulled=false;swordTip.renderOrder=1000;firstPersonWeapon.add(swordTip);
-firstPersonWeapon.visible=false;
+// Use the champion's actual animated body and sword in both POVs.
 // Drag displacement acts as a virtual look stick: holding off-centre keeps turning.
 let cameraYaw=0,cameraPitch=0,lookPointer=null;
 const LOOK_DEADZONE=5,LOOK_FULL_SPEED_DISTANCE=140,LOOK_MAX_SPEED=2.5;
@@ -517,7 +507,7 @@ function updateLook(dt){
   cameraPitch=THREE.MathUtils.clamp(cameraPitch+turn(dy),-1.35,1.35);
 }
 renderer.domElement.addEventListener('wheel',event=>{
-  event.preventDefault();cameraZoom=Math.max(.8,Math.min(4,cameraZoom*Math.exp(event.deltaY*.001)));
+  event.preventDefault();cameraDistance=THREE.MathUtils.clamp(cameraDistance*Math.exp(event.deltaY*.001),MIN_CAMERA_DISTANCE,MAX_CAMERA_DISTANCE);
 },{passive:false});
 renderer.domElement.addEventListener('pointerdown',event=>{
   if(event.pointerType==='mouse'&&event.button!==0)return;
@@ -534,7 +524,7 @@ renderer.domElement.addEventListener('pointermove',event=>{
     cameraTouches.set(event.pointerId,{x:event.clientX,y:event.clientY});
     if(cameraTouches.size===2){
       const [a,b]=[...cameraTouches.values()],distance=Math.hypot(a.x-b.x,a.y-b.y);
-      if(pinchDistance>0&&distance>0)cameraZoom=Math.max(.8,Math.min(4,cameraZoom*pinchDistance/distance));
+      if(pinchDistance>0&&distance>0)cameraDistance=THREE.MathUtils.clamp(cameraDistance*pinchDistance/distance,MIN_CAMERA_DISTANCE,MAX_CAMERA_DISTANCE);
       pinchDistance=distance;
     }
   }
@@ -653,14 +643,16 @@ function animate(){
   }
   updateLook(dt);
   const aspect=innerWidth/innerHeight;
-  const distance=(aspect<.7?16:14)*cameraZoom;
+  // Zoom distance is independent of champion size and never exceeds 300 units.
   if(cameraPov==='first'){
     // Positive horizontal drag looks right; upward drag raises the view.
     const yaw=Math.PI-cameraYaw;
     const forward=new THREE.Vector3(Math.sin(yaw)*Math.cos(cameraPitch),-Math.sin(cameraPitch),Math.cos(yaw)*Math.cos(cameraPitch));
     // Keep the eye at the collision body's center; moving it backwards can put
     // the near plane inside a target or wall when the champion is touching it.
-    camera.position.set(player.position.x,1.65,player.position.z);
+    // Eye-level camera, slightly ahead of the face to avoid seeing inside the
+    // champion's head while preserving the real animated torso, arms and sword.
+    camera.position.set(player.position.x+forward.x*.34,1.65,player.position.z+forward.z*.34);
     // Back the eye away from any nearby live dummy along the view direction.
     // This prevents its surface crossing the near plane at collision distance.
     // Leave wall collision and player position untouched.
@@ -676,23 +668,13 @@ function animate(){
       }
     }
     camera.lookAt(camera.position.clone().add(forward));
-    player.visible=false;
-    const weaponAction=activeAttackName||current==='Spell1'?'attack':null;
-    firstPersonWeapon.visible=!!weaponAction;
-    if(weaponAction){
-      const clip=actions[activeAttackName||'Spell1'];
-      const phase=clip?clip.time/Math.max(.01,clip.getClip().duration):0;
-      const swing=Math.sin(Math.min(1,phase)*Math.PI);
-      firstPersonWeapon.position.set(.48-.32*swing,-.47+.18*swing,-.8-.15*swing);
-      firstPersonWeapon.rotation.set(-.28-.75*swing,0,-.3-1.1*swing);
-    }
+    player.visible=true;
   }else{
-    firstPersonWeapon.visible=false;
     player.visible=true;
     // Orbit on a fixed-radius sphere: vertical dragging changes elevation, never zoom.
     // Only wheel scrolling or a two-finger pinch changes cameraZoom.
     const elevation=THREE.MathUtils.clamp(Math.atan(.72)-cameraPitch,.03,Math.PI/3);
-    const radius=distance*Math.sqrt(1+.72*.72);
+    const radius=cameraDistance;
     const orbit=new THREE.Vector3(Math.sin(cameraYaw)*radius*Math.cos(elevation),radius*Math.sin(elevation),Math.cos(cameraYaw)*radius*Math.cos(elevation));
     const goal=player.position.clone().add(orbit);
     camera.position.lerp(goal,Math.min(1,dt*3.4));
