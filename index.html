@@ -795,8 +795,10 @@ function animate(){
       rz=THREE.MathUtils.lerp(strikeZ,-.08,recovery);
     }
     if(spinning){
-      // Grip stays close to the body. Blade sweeps a full horizontal circle
-      // around that fixed pivot; camera orientation is never modified.
+      // Keep the blade's length exactly horizontal throughout the sweep.
+      // Rotate around camera-up at the fixed grip, with a quarter-turn about
+      // the blade's own axis to present its cutting edge into the sweep.
+      // The camera itself never rotates.
       const turns=Math.max(0,t-spinStartedAt)*SPIN_COUNT/SPIN_DURATION;
       px=.25+sway;py=-.28+bob;pz=-.60;
       rx=-Math.PI/2;
@@ -811,6 +813,11 @@ function animate(){
     }
     firstPersonSword.position.set(px,py,pz);
     firstPersonSword.rotation.set(rx,ry,rz,'YXZ');
+    if(spinning){
+      // Local +Y is the blade axis: axial roll changes edge orientation,
+      // without tilting the blade up/down or moving the grip pivot.
+      firstPersonSword.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0),Math.PI/2));
+    }
     // Never display the champion mesh in first person, even while attacking.
     player.visible=false;
   }else{
