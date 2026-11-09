@@ -16,7 +16,7 @@ import {createGarenAudio} from './scripts/audio/garen-audio.js';
 const garenAudio=createGarenAudio();
 import * as THREE from 'three';import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 const scene=new THREE.Scene();scene.background=new THREE.Color(0xb2cdd8);scene.fog=new THREE.Fog(0xb2cdd8,75,210);
-const camera=new THREE.PerspectiveCamera(55,innerWidth/innerHeight,.1,330);const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.35;document.body.prepend(renderer.domElement);
+const camera=new THREE.PerspectiveCamera(55,innerWidth/innerHeight,.025,330);const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.35;document.body.prepend(renderer.domElement);
 scene.add(new THREE.HemisphereLight(0xe9f7ff,0x52654c,2.2));const sun=new THREE.DirectionalLight(0xffedc6,2.8);sun.position.set(-5,12,8);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);sun.shadow.camera.left=-27;sun.shadow.camera.right=27;sun.shadow.camera.top=27;sun.shadow.camera.bottom=-27;sun.shadow.camera.near=1;sun.shadow.camera.far=160;sun.shadow.normalBias=.018;sun.shadow.bias=-.00008;sun.shadow.camera.updateProjectionMatrix();scene.add(sun,sun.target);
 const targets=[];
 for(const [x,z] of [[-23,20],[-17,20],[-20,23],[-23,26],[-17,26]]){
@@ -488,6 +488,19 @@ const cameraFocus=new THREE.Vector3();let occlusionCheck=0;
 let cameraZoom=1;
 function loadPov(){try{return localStorage.getItem('garen.pov')==='first'?'first':'third'}catch{return 'third'}}
 let cameraPov=loadPov();
+// First-person weapon viewmodel: attached to the camera so hiding the champion
+// does not hide the weapon. Render only while an attack or Spell1 is active.
+const firstPersonWeapon=new THREE.Group();camera.add(firstPersonWeapon);scene.add(camera);
+firstPersonWeapon.position.set(.48,-.47,-.8);firstPersonWeapon.rotation.set(-.28,0,-.3);
+const weaponMaterial=new THREE.MeshStandardMaterial({color:0xb8c6d1,metalness:.8,roughness:.27,depthTest:false,depthWrite:false});
+const gripMaterial=new THREE.MeshStandardMaterial({color:0x493c30,metalness:.2,roughness:.8,depthTest:false,depthWrite:false});
+const guardMaterial=new THREE.MeshStandardMaterial({color:0xd4b66d,metalness:.65,roughness:.3,depthTest:false,depthWrite:false});
+function weaponPart(geometry,material,y){const mesh=new THREE.Mesh(geometry,material);mesh.position.y=y;mesh.frustumCulled=false;mesh.renderOrder=1000;firstPersonWeapon.add(mesh)}
+weaponPart(new THREE.BoxGeometry(.055,.32,.055),gripMaterial,-.17);
+weaponPart(new THREE.BoxGeometry(.38,.055,.09),guardMaterial,.01);
+weaponPart(new THREE.BoxGeometry(.11,.84,.045),weaponMaterial,.46);
+const swordTip=new THREE.Mesh(new THREE.ConeGeometry(.075,.23,4),weaponMaterial);swordTip.rotation.y=Math.PI/4;swordTip.position.y=.98;swordTip.frustumCulled=false;swordTip.renderOrder=1000;firstPersonWeapon.add(swordTip);
+firstPersonWeapon.visible=false;
 // Drag displacement acts as a virtual look stick: holding off-centre keeps turning.
 let cameraYaw=0,cameraPitch=0,lookPointer=null;
 const LOOK_DEADZONE=5,LOOK_FULL_SPEED_DISTANCE=140,LOOK_MAX_SPEED=2.5;
@@ -639,14 +652,25 @@ function animate(){
     // Positive horizontal drag looks right; upward drag raises the view.
     const yaw=Math.PI-cameraYaw;
     const forward=new THREE.Vector3(Math.sin(yaw)*Math.cos(cameraPitch),-Math.sin(cameraPitch),Math.cos(yaw)*Math.cos(cameraPitch));
-    camera.position.set(player.position.x,1.65,player.position.z);
+    // Keep the near plane out of nearby targets, even when standing at collision range.
+    camera.position.set(player.position.x-forward.x*.18,1.65,player.position.z-forward.z*.18);
     camera.lookAt(camera.position.clone().add(forward));
     player.visible=false;
+    const weaponAction=activeAttackName||current==='Spell1'?'attack':null;
+    firstPersonWeapon.visible=!!weaponAction;
+    if(weaponAction){
+      const clip=actions[activeAttackName||'Spell1'];
+      const phase=clip?clip.time/Math.max(.01,clip.getClip().duration):0;
+      const swing=Math.sin(Math.min(1,phase)*Math.PI);
+      firstPersonWeapon.position.set(.48-.32*swing,-.47+.18*swing,-.8-.15*swing);
+      firstPersonWeapon.rotation.set(-.28-.75*swing,0,-.3-1.1*swing);
+    }
   }else{
+    firstPersonWeapon.visible=false;
     player.visible=true;
     // Orbit on a fixed-radius sphere: vertical dragging changes elevation, never zoom.
     // Only wheel scrolling or a two-finger pinch changes cameraZoom.
-    const elevation=THREE.MathUtils.clamp(Math.atan(.72)-cameraPitch,.03,1.4);
+    const elevation=THREE.MathUtils.clamp(Math.atan(.72)-cameraPitch,.03,Math.PI/3);
     const radius=distance*Math.sqrt(1+.72*.72);
     const orbit=new THREE.Vector3(Math.sin(cameraYaw)*radius*Math.cos(elevation),radius*Math.sin(elevation),Math.cos(cameraYaw)*radius*Math.cos(elevation));
     const goal=player.position.clone().add(orbit);
