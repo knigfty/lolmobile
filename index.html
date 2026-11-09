@@ -753,8 +753,14 @@ function animate(){
     const smooth=p=>p*p*(3-2*p);
     // The sword GLB was normalized with the grip at local (0,0,0).
     // Only rotate about this handle. Never translate the blade across screen.
-    let px=.43+sway,py=-.68+bob,pz=-.76;
-    let rx=-Math.PI/2,ry=0,rz=-.08;
+    // Narrow portrait screens have a much smaller horizontal field of view.
+    // Move the resting weapon inward and slightly farther from the camera so
+    // its hilt and blade remain visible without changing the desktop pose.
+    const portrait=THREE.MathUtils.clamp((.9-aspect)/.45,0,1);
+    let px=.43-.23*portrait+sway,py=-.68+.18*portrait+bob,pz=-.76-.36*portrait;
+    // The local blade points +Y; -70 degrees around X gives a 20-degree
+    // upward pitch from the horizontal ground plane.
+    let rx=-Math.PI/2+THREE.MathUtils.degToRad(20),ry=0,rz=-.08;
     if(runEmpowered&&!empowered&&!attacking&&!spinning&&!judging){
       px=.42+sway;py=-.85+bob;pz=-.82;
       rx=-.12;rz=-.16;
@@ -764,11 +770,17 @@ function animate(){
       // Wind up quickly, swing through at the same speed as third person,
       // then recover without sliding the sword through space.
       const side=name==='Attack2'?-1:1;
-      const p=smooth(phase);
-      px=side*.45+sway;py=-.59+bob;pz=-.85;
-      rx=-.22-1.42*p;
-      ry=side*(.32-.66*p);
-      rz=side*(-.83+1.65*p);
+      // The strike reaches the bottom exactly at the same 17.55% hit
+      // timestamp as third-person damage. The rest is the recovery phase.
+      const strike=smooth(THREE.MathUtils.clamp(phase/ATTACK_HIT_PHASE,0,1));
+      const recover=smooth(THREE.MathUtils.clamp((phase-ATTACK_HIT_PHASE)/(1-ATTACK_HIT_PHASE),0,1));
+      const swing=strike*(1-recover);
+      px=side*(.45-.12*portrait)+sway;
+      py=-.59+.10*portrait+bob;
+      pz=-.85-.24*portrait;
+      rx=-.22-1.42*swing;
+      ry=side*(.32-.66*swing);
+      rz=side*(-.83+1.65*swing);
     }
     if(spinning){
       // Grip stays close to the body. Blade sweeps a full horizontal circle
