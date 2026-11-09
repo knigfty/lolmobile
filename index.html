@@ -791,9 +791,12 @@ function animate(){
       const strikeX=THREE.MathUtils.lerp(topX,bottomX,strike);
       const strikeY=THREE.MathUtils.lerp(topY,bottomY,strike);
       const strikeZ=THREE.MathUtils.lerp(topZ,bottomZ,strike);
-      px=restPX-.14*portrait-(side===1?.18*portrait:0);
-      py=restPY+.04*portrait+(side===1?.12*portrait:0);
-      pz=restPZ-.12*portrait-(side===1?.18*portrait:0);
+      // Keep the grip at its natural idle/walking screen position. Only
+      // move forward during the strike, then ease back as the sword recovers.
+      // This prevents a positional snap when the attack animation ends.
+      px=restPX;
+      py=restPY;
+      pz=restPZ-.12*(1-recovery);
       rx=THREE.MathUtils.lerp(strikeX,restX,recovery);
       ry=THREE.MathUtils.lerp(strikeY,0,recovery);
       rz=THREE.MathUtils.lerp(strikeZ,-.08,recovery);
