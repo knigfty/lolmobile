@@ -10,6 +10,7 @@
 <div id="ui"><div id="top"><div><div id="brand">3D PLAYGROUND</div><a id="settings-link" href="/settings" aria-label="Settings" title="Settings"><svg viewBox="0 0 24 24" width="25" height="25" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M9 3h6l.6 2.6 2.3 1.3 2.5-.8 3 5.2-1.9 1.8v2.6l1.9 1.8-3 5.2-2.5-.8-2.3 1.3L15 26H9l-.6-2.6-2.3-1.3-2.5.8-3-5.2 1.9-1.8v-2.6L.6 11.5l3-5.2 2.5.8 2.3-1.3z" transform="translate(2 0) scale(.78)"/><circle cx="11.4" cy="11.4" r="3.2"/></svg></a></div><div id="stats">Targets hit: <strong id="hits">0</strong><br>Action: <strong id="state">Idle</strong></div></div><div id="message"></div><div id="bottom"><div id="joystick"><div id="stick"></div></div><div id="buttons"><button class="action" id="skill">SPIN</button><button class="action" id="justice">JUSTICE</button><button class="action" id="attack">ATTACK</button><button class="action" id="dance">DANCE</button></div></div><div id="help">Desktop: WASD / arrows · Space attack · E spin · R justice · F dance · Scroll / pinch to zoom</div></div>
 <script type="module">
 import {clone as cloneSkeleton} from 'three/addons/utils/SkeletonUtils.js';
+import {overlapsBody,separateBody} from './scripts/npcs/body-collision.mjs';
 import {loadChampionNpcs} from './scripts/npcs/champion-npcs.mjs';
 import {createDummyAnimations} from './scripts/objects/dummy-animations.mjs';
 import {containsPosition,constrainPosition} from './Assets/Map/citadel-collision.mjs';
@@ -119,27 +120,18 @@ function movementInput(){
 }
 // Circle colliders include each dummy's widest base and the champion's body.
 // Small movement steps prevent tunnelling; projection permits sliding along edges.
-function overlapsTarget(position,t){
-  return Math.hypot(position.x-t.group.position.x,position.z-t.group.position.z)<PLAYER_RADIUS+t.hitboxRadius-1e-7;
-}
+function overlapsTarget(position,t){return overlapsBody(position,PLAYER_RADIUS,t)}
 function movePlayer(dx,dz){
+  const bodies=[...targets.filter(t=>t.hp>0&&t.group.visible),...(championNpcs?.bodies??[])];
   const steps=Math.max(1,Math.ceil(Math.hypot(dx,dz)/(PLAYER_RADIUS*.5)));
   for(let step=0;step<steps;step++){
     const previous=player.position.clone();
     player.position.x+=dx/steps;player.position.z+=dz/steps;
     for(let pass=0;pass<8;pass++){
       constrainPosition(player.position,PLAYER_RADIUS,mapLayout);
-      for(const t of targets){
-        if(t.hp<=0||!t.group.visible||!overlapsTarget(player.position,t))continue;
-        let nx=player.position.x-t.group.position.x,nz=player.position.z-t.group.position.z;
-        let distance=Math.hypot(nx,nz);
-        if(distance<1e-8){nx=-dx||1;nz=-dz;distance=Math.hypot(nx,nz)}
-        const separation=PLAYER_RADIUS+t.hitboxRadius;
-        player.position.x=t.group.position.x+nx/distance*separation;
-        player.position.z=t.group.position.z+nz/distance*separation;
-      }
+      for(const body of bodies)separateBody(player.position,PLAYER_RADIUS,body,dx,dz);
     }
-    if(!containsPosition(player.position,PLAYER_RADIUS,mapLayout)||targets.some(t=>t.hp>0&&t.group.visible&&overlapsTarget(player.position,t)))player.position.copy(previous);
+    if(!containsPosition(player.position,PLAYER_RADIUS,mapLayout)||bodies.some(body=>overlapsTarget(player.position,body)))player.position.copy(previous);
   }
 }
 function startRunSpell(){
@@ -698,7 +690,7 @@ function animate(){
     if(now>=lockUntil&&!spell1Target)play(runSpellActive()?'Run_Spell1':'Run_Base');
   }else if(now>=lockUntil&&!spell1Target)play('Idle1_Base');
   updateTargets(dt);
-  championNpcs?.update(dt,player,dancing,playerDanceId);
+  championNpcs?.update(dt,player,dancing,playerDanceId,PLAYER_RADIUS);
   if(mixer){
     updateAnimationBlend();
     mixer.update(dt);

@@ -1,12 +1,16 @@
 import * as THREE from 'three';
-import {createNavigation,createRoamer,LANDMARKS} from './roaming.mjs';
+import {createNavigation,createRoamer,LANDMARKS,NPC_RADIUS} from './roaming.mjs';
+
+import {bodyPathClear} from './body-collision.mjs';
 
 export async function loadChampionNpcs({loader,scene,layout,targets}){
   // Dummies remain obstacles even while temporarily defeated, so routes do not
   // get invalidated by a respawn. Both NPCs share one cached navigation grid.
-  const navigation=createNavigation({...layout,obstacles:[...layout.obstacles,...targets.map(t=>({
+  const navigationLayout={...layout,obstacles:[...layout.obstacles,...targets.map(t=>({
     type:'circle',x:t.group.position.x,z:t.group.position.z,radius:t.hitboxRadius,
-  }))]});
+  }))]};
+  const navigation=createNavigation(navigationLayout);
+  const bodies=[];let playerBody=null;
   const definitions=[{name:'Lux',file:'lux.glb',start:3,headHeight:1.72},{name:'Jarvan IV',file:'jarvan_iv.glb',start:5,headHeight:1.9}];
   const assets=await Promise.all(definitions.map(d=>loader.loadAsync(`./Assets/Champs/${d.file}`)));
   const npcs=assets.map((gltf,index)=>{
@@ -42,7 +46,7 @@ export async function loadChampionNpcs({loader,scene,layout,targets}){
     const start=LANDMARKS[definition.start],position={x:start.x,z:start.z,heading:0};
     let current=null;
     function play(name,once=false){
-      const action=actions.get(name),speed=name==='Run'?.65:1;
+      const action=actions.get(name),speed=1;
       if(action!==current){
         action.reset().setLoop(once?THREE.LoopOnce:THREE.LoopRepeat,once?1:Infinity);
         action.clampWhenFinished=once;action.setEffectiveTimeScale(speed).setEffectiveWeight(1).play();
@@ -52,12 +56,21 @@ export async function loadChampionNpcs({loader,scene,layout,targets}){
       group.rotation.y=position.heading;
       return action.getClip().duration/speed;
     }
-    const brain=createRoamer({position,navigation,play,startIndex:definition.start});
+    const body={group,hitboxRadius:NPC_RADIUS};bodies.push(body);
+    const blockers=()=>[...bodies.filter(other=>other!==body),...(playerBody?[playerBody]:[])];
+    const brain=createRoamer({position,navigation,play,startIndex:definition.start,
+      canMove:(from,to)=>bodyPathClear(from,to,NPC_RADIUS,blockers()),
+      replan:(from,to)=>createNavigation({...navigationLayout,obstacles:[...navigationLayout.obstacles,
+        ...blockers().map(b=>({type:'circle',x:b.group.position.x,z:b.group.position.z,radius:b.hitboxRadius+.1})),
+      ]}).route(from,to),
+    });
     group.position.set(position.x,layout.ground_y??0,position.z);scene.add(group);
     return {group,position,brain,mixer};
   });
   return {
-    update(dt,player,dancing,danceId){
+    bodies,
+    update(dt,player,dancing,danceId,playerRadius=.4){
+      playerBody={group:player,hitboxRadius:playerRadius};
       for(const npc of npcs){
         npc.brain.update(dt,{player:player.position,dancing,danceId});
         npc.group.position.x=npc.position.x;npc.group.position.z=npc.position.z;

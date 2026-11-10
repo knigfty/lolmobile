@@ -1,6 +1,7 @@
 import {containsPosition} from '../../Assets/Map/citadel-collision.mjs';
 
 export const NPC_RADIUS=.55;
+export const NPC_SPEED=4.5; // Match normal player travel; Run plays at native speed.
 // Deliberate stops on the existing map, not random coordinates. The hall stops
 // are inside the citadel; fountains and training stops are beside their props.
 export const LANDMARKS=[
@@ -81,10 +82,11 @@ export function createNavigation(layout,radius=NPC_RADIUS){
   return {clear,route};
 }
 
-export function createRoamer({position,navigation,play,random=Math.random,startIndex=2}){
+export function createRoamer({position,navigation,play,random=Math.random,startIndex=2,canMove=()=>true,replan=null}){
   let state='idle',remaining=0,idleChange=0,idleIndex=0,near=false,lastDance=0,route=[],destination=startIndex,visits=[];
+  let elapsed=0,movingTime=0,blocked=0;
   const choose=items=>items[Math.floor(random()*items.length)];
-  function idle(){state='idle';remaining=40+random()*30;idleChange=play(`Idle${idleIndex%4+1}`);idleIndex++}
+  function idle(){state='idle';remaining=elapsed===0?4:Math.max(0,movingTime/.3-elapsed);idleChange=play(`Idle${idleIndex%4+1}`);idleIndex++}
   function react(name,player){
     // Face immediately BEFORE starting the emote, including reactions mid-walk.
     position.heading=Math.atan2(player.x-position.x,player.z-position.z);
@@ -92,8 +94,9 @@ export function createRoamer({position,navigation,play,random=Math.random,startI
   }
   idle();
   return {
-    get state(){return state},get destination(){return LANDMARKS[destination].name},
+    get state(){return state},get activity(){return {elapsed,movingTime}},get destination(){return LANDMARKS[destination].name},
     update(dt,{player,dancing=false,danceId=0}){
+      elapsed+=dt;
       const d=distance(position,player),visible=d<=7&&navigation.clear(position,player,.05);
       const entered=!near&&d<=4&&visible;
       if(d>6)near=false;
@@ -116,14 +119,22 @@ export function createRoamer({position,navigation,play,random=Math.random,startI
         state='walk';play('Run');
       }
       const target=route[0];if(!target){idle();return}
-      const length=distance(position,target),step=Math.min(length,1.65*dt);
+      const length=distance(position,target),step=Math.min(length,NPC_SPEED*dt);
       if(length<.025){route.shift();if(!route.length)idle();return}
       const next={x:position.x+(target.x-position.x)/length*step,z:position.z+(target.z-position.z)/length*step};
       // Yield to the player instead of marching through their body.
-      if(distance(next,player)<1.15){play('Idle1');return}
+      if(!canMove(position,next)||distance(next,player)<.95){
+        play('Idle1');blocked+=dt;
+        if(blocked>=2){
+          blocked=0;route=replan?.(position,LANDMARKS[destination])??[];
+          if(!route.length)idle();
+        }
+        return;
+      }
+      blocked=0;
       if(!navigation.clear(position,next)){idle();return}
       play('Run');position.heading=Math.atan2(target.x-position.x,target.z-position.z);
-      position.x=next.x;position.z=next.z;
+      position.x=next.x;position.z=next.z;movingTime+=step/NPC_SPEED;
     },
   };
 }
