@@ -69,9 +69,10 @@ export async function loadChampionNpcs({loader,scene,layout,targets}){
     const brain=createRoamer({position,navigation,play,startIndex:definition.start,
       reactionActive:()=>syncedEmote?Boolean(audio.emotePlayback):null,
       canMove:(from,to)=>bodyPathClear(from,to,NPC_RADIUS,blockers()),
-      replan:(from,to)=>createNavigation({...navigationLayout,obstacles:[...navigationLayout.obstacles,
-        ...blockers().map(b=>({type:'circle',x:b.group.position.x,z:b.group.position.z,radius:b.hitboxRadius+.1})),
-      ]}).route(from,to),
+      replan:(from,to)=>{
+        const snapshot=blockers().map(b=>({group:{position:{x:b.group.position.x,z:b.group.position.z}},hitboxRadius:b.hitboxRadius}));
+        return navigation.route(from,to,(a,b)=>bodyPathClear(a,b,NPC_RADIUS,snapshot));
+      },
     });
     group.position.set(position.x,groundHeight(position,layout),position.z);scene.add(group);
     function updateAnimation(dt){

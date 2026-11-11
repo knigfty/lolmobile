@@ -54,12 +54,15 @@ export function createNavigation(layout,radius=NPC_RADIUS){
     }
     return edges.get(p.id);
   }
-  function nearest(p){
-    return nodes.filter(n=>distance(n,p)<=2).sort((a,b)=>distance(a,p)-distance(b,p)).find(n=>clear(p,n));
+  function nearest(p,clearRoute){
+    return nodes.filter(n=>distance(n,p)<=2).sort((a,b)=>distance(a,p)-distance(b,p)).find(n=>clearRoute(p,n));
   }
-  function route(start,end){
-    if(clear(start,end))return [{x:end.x,z:end.z}];
-    const first=nearest(start),last=nearest(end);if(!first||!last)return [];
+  function route(start,end,canTraverse=()=>true){
+    // Reuse the static grid, but test every connector, edge and shortcut
+    // against a fresh snapshot of unit bodies for this planning request.
+    const clearRoute=(a,b)=>clear(a,b)&&canTraverse(a,b);
+    if(clearRoute(start,end))return [{x:end.x,z:end.z}];
+    const first=nearest(start,clearRoute),last=nearest(end,clearRoute);if(!first||!last)return [];
     const open=new Set([first.id]),closed=new Set(),cost=new Map([[first.id,0]]),parent=new Map();
     while(open.size){
       let id,best=Infinity;
@@ -69,12 +72,12 @@ export function createNavigation(layout,radius=NPC_RADIUS){
         while(cursor!==undefined){path.unshift(nodes[cursor]);cursor=parent.get(cursor)}
         // Smooth only with the same swept collision test used while moving.
         const smooth=[];let from=start,index=0;
-        while(index<path.length){let next=index;while(next+1<path.length&&clear(from,path[next+1]))next++;smooth.push({x:path[next].x,z:path[next].z});from=path[next];index=next+1}
+        while(index<path.length){let next=index;while(next+1<path.length&&clearRoute(from,path[next+1]))next++;smooth.push({x:path[next].x,z:path[next].z});from=path[next];index=next+1}
         return smooth;
       }
       open.delete(id);closed.add(id);
       for(const next of neighbors(nodes[id])){
-        if(closed.has(next.id))continue;
+        if(closed.has(next.id)||!canTraverse(nodes[id],next))continue;
         const score=cost.get(id)+distance(nodes[id],next);
         if(score<(cost.get(next.id)??Infinity)){cost.set(next.id,score);parent.set(next.id,id);open.add(next.id)}
       }
@@ -86,7 +89,7 @@ export function createNavigation(layout,radius=NPC_RADIUS){
 
 export function createRoamer({position,navigation,play,random=Math.random,startIndex=2,canMove=()=>true,replan=null,reactionActive=()=>null}){
   let state='idle',remaining=0,idleChange=0,idleIndex=0,near=false,lastDance=0,route=[],destination=startIndex,visits=[];
-  let elapsed=0,movingTime=0,blocked=0;
+  let elapsed=0,movingTime=0,replanReadyAt=0;
   const choose=items=>items[Math.floor(random()*items.length)];
   function idle(){state='idle';remaining=elapsed===0?4:Math.max(0,movingTime/.3-elapsed);idleChange=play(`Idle${idleIndex%4+1}`);idleIndex++}
   function react(name,player){
@@ -127,22 +130,25 @@ export function createRoamer({position,navigation,play,random=Math.random,startI
         if(!route.length){idle();return}
         state='walk';play('Run');
       }
-      const target=route[0];if(!target){idle();return}
-      const length=distance(position,target),step=Math.min(length,NPC_SPEED*dt);
+      let target=route[0];if(!target){idle();return}
+      let length=distance(position,target);
       if(length<.025){route.shift();if(!route.length)idle();return}
-      const next={x:position.x+(target.x-position.x)/length*step,z:position.z+(target.z-position.z)/length*step};
-      // Yield to the player instead of marching through their body.
-      if(!canMove(position,next)||distance(next,player)<.95){
-        play('Idle1');blocked+=dt;
-        if(blocked>=2){
-          blocked=0;route=replan?.(position,LANDMARKS[destination])??[];
-          if(!route.length)idle();
-        }
-        return;
+      const pointAlong=amount=>({x:position.x+(target.x-position.x)/length*amount,z:position.z+(target.z-position.z)/length*amount});
+      // Look ahead before contact, so an available detour replaces the route
+      // without an idle pause. Rate-limit replans if a passage is truly blocked.
+      if(!canMove(position,pointAlong(Math.min(length,2.5)))&&elapsed>=replanReadyAt){
+        replanReadyAt=elapsed+.4;
+        const detour=replan?.(position,LANDMARKS[destination]);
+        if(detour?.length){route=detour;target=route[0];length=distance(position,target)}
       }
-      blocked=0;
+      if(length<.025){route.shift();return}
+      const step=Math.min(length,NPC_SPEED*dt),next=pointAlong(step);
+      if(!canMove(position,next)){play('Idle1');return}
       if(!navigation.clear(position,next)){idle();return}
-      play('Run');position.heading=Math.atan2(target.x-position.x,target.z-position.z);
+      play('Run');
+      const desired=Math.atan2(target.x-position.x,target.z-position.z);
+      const delta=Math.atan2(Math.sin(desired-position.heading),Math.cos(desired-position.heading));
+      position.heading+=delta*(1-Math.exp(-10*dt));
       position.x=next.x;position.z=next.z;movingTime+=step/NPC_SPEED;
     },
   };

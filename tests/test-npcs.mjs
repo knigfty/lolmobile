@@ -74,3 +74,57 @@ for(let i=0;i<200;i++)blockedBrain.update(.05,{player:remote});
 assert.deepEqual(blockedPosition,{x:0,z:8,heading:0});
 assert.equal(blockedBrain.activity.movingTime,0,'blocked time is not moving time');assert.ok(replans>0);
 console.log('Passed: solid body contacts from all angles, swept NPC collision, blocked-time accounting and replanning.');
+
+// Dynamic bodies participate in the whole route, including smoothed shortcuts.
+const openLayout={bounds:{minX:-30,maxX:30,minZ:-35,maxZ:35},obstacles:[]};
+const openNav=createNavigation(openLayout);
+const obstacle={group:{position:{x:0,z:0}},hitboxRadius:.4};
+for(const start of [{x:-5,z:0},{x:-.95,z:0}]){
+  const path=openNav.route(start,{x:5,z:0},(a,b)=>bodyPathClear(a,b,NPC_RADIUS,[obstacle]));
+  assert.ok(path.length,'route around player even when already touching');
+  let previous=start;for(const next of path){assert.ok(bodyPathClear(previous,next,NPC_RADIUS,[obstacle]));previous=next}
+  assert.deepEqual(previous,{x:5,z:0});
+}
+// The player blocks the journey to the first landmark; do not stop or abandon it.
+const traveler={x:-3,z:-10,heading:0},playerBlock={group:{position:{x:-3,z:-15}},hitboxRadius:.4};
+let planning=0,stopped=0;
+let travelerBrain;travelerBrain=createRoamer({position:traveler,navigation:openNav,startIndex:2,random:()=>0,
+  play:name=>{if(name==='Idle1'&&travelerBrain?.state==='walk')stopped++;return 2},
+  canMove:(a,b)=>bodyPathClear(a,b,NPC_RADIUS,[playerBlock]),
+  replan:(a,b)=>{planning++;return openNav.route(a,b,(x,y)=>bodyPathClear(x,y,NPC_RADIUS,[playerBlock]))},
+});
+
+for(let i=0;i<240;i++){
+  const before={...traveler};travelerBrain.update(.05,{player:remote});
+  assert.ok(bodyPathClear(before,traveler,NPC_RADIUS,[playerBlock]),'never crosses the player');
+  if(travelerBrain.state==='idle'&&i>80)break;
+}
+assert.ok(planning>0);assert.equal(stopped,0,'detour starts without a collision pause');
+assert.ok(Math.hypot(traveler.x+3,traveler.z+21)<.05,'keeps the original destination');
+// Fully blocked passages retry the same journey and resume once a unit moves.
+let closed=true,retries=0;const waiting={x:-3,z:-10,heading:0};
+const waitingBrain=createRoamer({position:waiting,navigation:openNav,startIndex:2,random:()=>0,play:()=>2,
+  canMove:()=>!closed,replan:(a,b)=>{retries++;return closed?[]:openNav.route(a,b)}});
+for(let i=0;i<140;i++)waitingBrain.update(.05,{player:remote});
+assert.equal(waitingBrain.state,'walk');assert.equal(waitingBrain.destination,'Citadel hall west');
+assert.ok(retries>2&&retries<12,'replanning is throttled');closed=false;
+for(let i=0;i<80;i++){waitingBrain.update(.05,{player:remote});if(Math.hypot(waiting.x+3,waiting.z+21)<.05)break;}
+assert.ok(Math.hypot(waiting.x+3,waiting.z+21)<.05);
+console.log('Passed: dynamic route safety, contact escape, proactive player detours without stopping, and temporary-block recovery at the original destination.');
+
+const pair=[{x:-3,z:-21,heading:0},{x:3,z:-21,heading:0}];
+const arrived=[false,false];
+const pairBrains=pair.map((position,index)=>{
+  const others=[{group:{position:pair[1-index]},hitboxRadius:NPC_RADIUS}];
+  return createRoamer({position,navigation:openNav,startIndex:index,random:()=>0,play:()=>2,
+    canMove:(a,b)=>bodyPathClear(a,b,NPC_RADIUS,others),
+    replan:(a,b)=>openNav.route(a,b,(x,y)=>bodyPathClear(x,y,NPC_RADIUS,others))});
+});
+for(let frame=0;frame<400;frame++)for(let i=0;i<2;i++){
+  if(arrived[i])continue;
+  pairBrains[i].update(.05,{player:remote});
+  assert.ok(Math.hypot(pair[0].x-pair[1].x,pair[0].z-pair[1].z)>=2*NPC_RADIUS-1e-7);
+  if(Math.hypot(pair[i].x-(i===0?3:-3),pair[i].z+21)<.05)arrived[i]=true;
+}
+assert.deepEqual(arrived,[true,true],'head-on NPCs pass one another and reach their destinations');
+console.log('Passed: two head-on NPCs pass without overlapping or deadlocking.');
