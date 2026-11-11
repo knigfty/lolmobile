@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import {groundHeight} from '../../Assets/Map/citadel-collision.mjs';
+import {groundHeight} from '../../Assets/Map/Citadel/citadel-collision.mjs';
 import {createNavigation,createRoamer,LANDMARKS,NPC_RADIUS,NPC_INTERACTION_RANGE} from './roaming.mjs';
 
 import {createNpcAudio,syncEmoteAnimation} from '../audio/npc-audio.mjs';

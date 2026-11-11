@@ -13,7 +13,7 @@ import {clone as cloneSkeleton} from 'three/addons/utils/SkeletonUtils.js';
 import {overlapsBody,separateBody} from './scripts/npcs/body-collision.mjs';
 import {loadChampionNpcs} from './scripts/npcs/champion-npcs.mjs';
 import {createDummyAnimations} from './scripts/objects/dummy-animations.mjs';
-import {containsPosition,constrainPosition,groundHeight} from './Assets/Map/citadel-collision.mjs';
+import {containsPosition,constrainPosition,groundHeight} from './Assets/Map/Citadel/citadel-collision.mjs';
 import {createGarenAudio} from './scripts/audio/garen-audio.js';
 const garenAudio=createGarenAudio();
 import * as THREE from 'three';import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
@@ -596,10 +596,10 @@ let loadingAsset='map';
 async function loadGame(){
   try{
     document.getElementById('loadText').textContent='Loading Demacian citadel…';
-    const layoutResponse=await fetch('./Assets/Map/Metadata/citadel-layout.json?v=3');
+    const layoutResponse=await fetch('./Assets/Map/Citadel/Metadata/citadel-layout.json?v=3');
     if(!layoutResponse.ok)throw new Error('Citadel collision layout could not be loaded');
     mapLayout=await layoutResponse.json();
-    const map=await loader.loadAsync('./Assets/Map/Models/demacian_citadel.glb?v=2');
+    const map=await loader.loadAsync('./Assets/Map/Citadel/Models/demacian_citadel.glb?v=2');
     map.scene.name='DemacianCitadel';
     // Remove retired training rings and markers from existing map exports.
     const trainingInlays=[];
@@ -644,7 +644,7 @@ async function loadGame(){
 function fail(err){
   console.error(`Could not load ${loadingAsset}`,err);
   document.getElementById('loadText').textContent=loadingAsset==='map'
-    ?'Could not load map. Check the citadel model and layout under Assets/Map are included in this deployment, then reload.'
+    ?'Could not load map. Check the citadel model and layout under Assets/Map/Citadel are included in this deployment, then reload.'
     :loadingAsset==='NPC champions'?'Could not load Lux or Jarvan IV. Check their GLB files under Assets/Champs and reload.'
     :loadingAsset==='target dummy'?'Could not load target dummy. Check Assets/Objects/target_dummy.glb and its animations, then reload.'
     :'Could not load the champion model. Check that the champion asset is included in this deployment, then reload.';

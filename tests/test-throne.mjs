@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {containsPosition,groundHeight,constrainPosition} from '../Assets/Map/citadel-collision.mjs';
+import {containsPosition,groundHeight,constrainPosition} from '../Assets/Map/Citadel/citadel-collision.mjs';
 import {createNavigation,NPC_RADIUS,LANDMARKS} from '../scripts/npcs/roaming.mjs';
-const layout=JSON.parse(readFileSync(new URL('../Assets/Map/Metadata/citadel-layout.json',import.meta.url)));
+const layout=JSON.parse(readFileSync(new URL('../Assets/Map/Citadel/Metadata/citadel-layout.json',import.meta.url)));
 assert.equal(groundHeight({x:0,z:0},layout),0);
 assert.equal(groundHeight({x:0,z:-25.9},layout),1.12);
 assert.equal(containsPosition({x:0,z:-27},.4,layout),false,'chair remains solid');
@@ -20,7 +20,7 @@ for(const radius of [.4,NPC_RADIUS]){
   for(const start of LANDMARKS){const route=nav.route(start,{x:0,z:-25.9});assert.ok(route.length,`${start.name} reaches platform`)}
 }
 // Existing rendered geometry and new height metadata must agree: no GLB edit needed.
-const bytes=readFileSync(new URL('../Assets/Map/Models/demacian_citadel.glb',import.meta.url));
+const bytes=readFileSync(new URL('../Assets/Map/Citadel/Models/demacian_citadel.glb',import.meta.url));
 const size=bytes.readUInt32LE(12),gltf=JSON.parse(bytes.toString('utf8',20,20+size));
 const mesh=gltf.meshes.find(m=>m.name==='ThroneSteps');assert.ok(mesh);
 const heights=[];

@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {createNavigation,createRoamer,LANDMARKS,NPC_RADIUS} from '../scripts/npcs/roaming.mjs';
-import {containsPosition} from '../Assets/Map/citadel-collision.mjs';
-const layout=JSON.parse(readFileSync(new URL('../Assets/Map/Metadata/citadel-layout.json',import.meta.url)));
+import {containsPosition} from '../Assets/Map/Citadel/citadel-collision.mjs';
+const layout=JSON.parse(readFileSync(new URL('../Assets/Map/Citadel/Metadata/citadel-layout.json',import.meta.url)));
 layout.obstacles.push(...[[-23,20],[-17,20],[-20,23],[-23,26],[-17,26]].map(([x,z])=>({type:'circle',x,z,radius:.8})));
 const nav=createNavigation(layout);
 for(const a of LANDMARKS)for(const b of LANDMARKS){

@@ -18,11 +18,11 @@ The application is a static site with no backend, database, player authenticatio
 | `Assets/Champs/lux.glb`, `jarvan_iv.glb` | Animated non-combat NPCs. |
 | `Assets/Objects/target_dummy.glb` | Independently animated training targets. |
 | `Assets/Objects/garen_sword.glb` | Dedicated first-person sword viewmodel. |
-| `Assets/Map/Models/demacian_citadel.glb` | Current rendered citadel and courtyard. |
-| `Assets/Map/Metadata/citadel-layout.json` | Spawn, bounds, obstacle footprints and walkable tread heights. |
-| `Assets/Map/citadel-collision.mjs` | `containsPosition`, `constrainPosition`, `groundHeight`. |
-| `Assets/Map/Source/generate_citadel.py` | Deterministic map generator (Python, NumPy, Pillow). |
-| `Assets/Map/Textures/`, `Previews/`, `Metadata/` | Map texture, generated previews and validation metadata. |
+| `Assets/Map/Citadel/Models/demacian_citadel.glb` | Current rendered citadel and courtyard. |
+| `Assets/Map/Citadel/Metadata/citadel-layout.json` | Spawn, bounds, obstacle footprints and walkable tread heights. |
+| `Assets/Map/Citadel/citadel-collision.mjs` | `containsPosition`, `constrainPosition`, `groundHeight`. |
+| `Assets/Map/Citadel/Source/generate_citadel.py` | Deterministic map generator (Python, NumPy, Pillow). |
+| `Assets/Map/Citadel/Textures/`, `Previews/`, `Metadata/` | Map texture, generated previews and validation metadata. |
 | `scripts/npcs/roaming.mjs` | Landmark navigation, activity budget and social reactions. |
 | `scripts/npcs/champion-npcs.mjs` | GLB loading, model normalization, mixers and body registration. |
 | `scripts/npcs/body-collision.mjs` | Swept circles, overlap tests and body separation. |

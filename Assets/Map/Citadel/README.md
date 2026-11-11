@@ -22,7 +22,7 @@ The player spawns at (0, 0, 12). Five training dummies occupy the southwest (bot
 
 ## Generation and validation
 
-Run `python Assets/Map/Source/generate_citadel.py` from the repository root. Replaces citadel outputs in the folders above. Run `node tests/test-citadel.mjs` to check enclosed movement, solid landmarks, spawn clearance, GLB structure, and upward courtyard normals. The export asserts positive signed volumes for closed architectural meshes, keeps the foundation below the paved ground to avoid overlapping faces, and embeds the PNG so no external textures are needed.
+Run `python Assets/Map/Citadel/Source/generate_citadel.py` from the repository root. Replaces citadel outputs in the folders above. Run `node tests/test-citadel.mjs` to check enclosed movement, solid landmarks, spawn clearance, GLB structure, and upward courtyard normals. The export asserts positive signed volumes for closed architectural meshes, keeps the foundation below the paved ground to avoid overlapping faces, and embeds the PNG so no external textures are needed.
 
 Software previews and structural tests do not verify GPU rendering or performance on a real phone. The runtime metadata accurately reports whether an in-engine import has been tested.
 

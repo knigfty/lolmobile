@@ -1,4 +1,4 @@
-import {containsPosition} from '../../Assets/Map/citadel-collision.mjs';
+import {containsPosition} from '../../Assets/Map/Citadel/citadel-collision.mjs';
 
 export const NPC_RADIUS=.55;
 export const NPC_INTERACTION_RANGE=7;

@@ -1,5 +1,5 @@
 """Original reference-inspired citadel; deterministic local geometry, no paid services.
-Rebuild: python Assets/Map/Source/generate_citadel.py (numpy, Pillow).
+Rebuild: python Assets/Map/Citadel/Source/generate_citadel.py (numpy, Pillow).
 """
 from pathlib import Path
 import json, math, struct, hashlib, random
