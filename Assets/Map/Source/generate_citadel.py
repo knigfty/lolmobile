@@ -18,7 +18,7 @@ for y in range(1024):
   if k==4:n+=int(3*math.sin(u*.18)*math.cos(v*.14))
   px[x,y]=tuple(max(0,min(255,c+n)) for c in C[k])
 tex.save(ROOT/'Textures/citadel_atlas.png')
-L={}; obstacles=[]; SECTION=''
+L={}; obstacles=[]; walkable_surfaces=[]; SECTION=''
 def tri(name,pts,m,uv=None):
  if SECTION:name+='__'+SECTION
  a,b,c=np.array(pts,float);n=np.cross(b-a,c-a);length=np.linalg.norm(n)
@@ -146,9 +146,13 @@ for i in range(14):
   quad('VaultRibs',(x0-.18,y0,z0),(x1-.18,y1,z1),(x1+.18,y1,z1),(x0+.18,y0,z0),1)
  box('HallBanners',x*.94,9,-22+(z+22)*.94,.75,4,.08,12)
  box('HallBannerGold',x*.94,7,-22+(z+22)*.94,.8,.15,.1,3)
-# Decorative throne dais is solid; the surrounding hall remains walkable.
-for j in range(5):box('ThroneSteps',0,.12+j*.22,-27,6-j*.5,.24,3.8-j*.35,1)
-obstacles.append({'type':'box','minX':-3,'maxX':3,'minZ':-29,'maxZ':-25})
+# Walkable stepped dais: collision height matches the existing rendered treads.
+for j in range(5):
+ w=6-j*.5;d=3.8-j*.35
+ box('ThroneSteps',0,.12+j*.22,-27,w,.24,d,1)
+ walkable_surfaces.append({'name':'Throne step '+str(j+1),'minX':-w/2,'maxX':w/2,'minZ':-27-d/2,'maxZ':-27+d/2,'height':round(.24+j*.22,2)})
+# Only the chair/back remains solid; characters can ascend beside/in front of it.
+obstacles.append({'type':'box','minX':-.9,'maxX':.9,'minZ':-27.55,'maxZ':-26.6})
 box('Throne',0,2,-27,1.5,2,.8,3);box('Throne',0,3.2,-27.4,1.8,3,.3,2)
 for x in [-3.7,3.7]:
  cylinder('HallGuardians',x,-28,0,1,.45,7,15,10)
@@ -218,7 +222,7 @@ for i in range(16):
  a=i*math.tau/16;r=105+rng.uniform(-8,10)
  cylinder('DistantMountains',math.cos(a)*r,math.sin(a)*r,-25,rng.uniform(18,30),0,rng.uniform(30,55),13,7)
 plane_tiles('OutsideMeadow',0,0,260,260,-17,4,20)
-layout={'name':'Demacian Citadel','units':'game units','up_axis':'Y','ground_y':0,'bounds':{'minX':-30.5,'maxX':30.5,'minZ':-36.5,'maxZ':36.5},'spawn':[0,0,12],'obstacles':obstacles,'visual_extent':260,'wall_height':7.8,'closed_gate':True}
+layout={'name':'Demacian Citadel','units':'game units','up_axis':'Y','ground_y':0,'bounds':{'minX':-30.5,'maxX':30.5,'minZ':-36.5,'maxZ':36.5},'spawn':[0,0,12],'obstacles':obstacles,'walkable_surfaces':walkable_surfaces,'visual_extent':260,'wall_height':7.8,'closed_gate':True}
 (ROOT/'Metadata/citadel-layout.json').write_text(json.dumps(layout,indent=2)+'\n')
 # Embedded, indexed glTF reduces download and mobile memory costs.
 g={'asset':{'version':'2.0','generator':'lgmobile original reference-inspired citadel'},'scene':0,'scenes':[{'nodes':[]}],'nodes':[],'meshes':[],'buffers':[],'bufferViews':[],'accessors':[],'images':[],'textures':[{'source':0,'sampler':0}],'samplers':[{'magFilter':9729,'minFilter':9987,'wrapS':33071,'wrapT':33071}],'materials':[{'name':'CitadelAtlas','pbrMetallicRoughness':{'baseColorTexture':{'index':0},'metallicFactor':0,'roughnessFactor':.86}}]}

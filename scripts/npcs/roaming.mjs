@@ -11,6 +11,7 @@ export const LANDMARKS=[
   {name:'West fountain',x:-20,z:7},
   {name:'East fountain',x:20,z:7},
   {name:'Dummy training',x:-20,z:29.5},
+  {name:'Throne platform',x:0,z:-25.9},
 ];
 const distance=(a,b)=>Math.hypot(a.x-b.x,a.z-b.z);
 

@@ -31,3 +31,13 @@ export function constrainPosition(position,radius,layout){
   }
   return position;
 }
+
+// Feet follow the highest tread under the actor. Geometry and metadata share
+// these footprints; no radius expansion, which would lift actors before a step.
+export function groundHeight(position,layout){
+  let height=layout.ground_y??0;
+  for(const surface of layout.walkable_surfaces??[]){
+    if(position.x>=surface.minX&&position.x<=surface.maxX&&position.z>=surface.minZ&&position.z<=surface.maxZ)height=Math.max(height,surface.height);
+  }
+  return height;
+}

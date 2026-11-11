@@ -13,7 +13,7 @@ import {clone as cloneSkeleton} from 'three/addons/utils/SkeletonUtils.js';
 import {overlapsBody,separateBody} from './scripts/npcs/body-collision.mjs';
 import {loadChampionNpcs} from './scripts/npcs/champion-npcs.mjs';
 import {createDummyAnimations} from './scripts/objects/dummy-animations.mjs';
-import {containsPosition,constrainPosition} from './Assets/Map/citadel-collision.mjs';
+import {containsPosition,constrainPosition,groundHeight} from './Assets/Map/citadel-collision.mjs';
 import {createGarenAudio} from './scripts/audio/garen-audio.js';
 const garenAudio=createGarenAudio();
 import * as THREE from 'three';import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
@@ -594,7 +594,7 @@ let loadingAsset='map';
 async function loadGame(){
   try{
     document.getElementById('loadText').textContent='Loading Demacian citadel…';
-    const layoutResponse=await fetch('./Assets/Map/Metadata/citadel-layout.json?v=2');
+    const layoutResponse=await fetch('./Assets/Map/Metadata/citadel-layout.json?v=3');
     if(!layoutResponse.ok)throw new Error('Citadel collision layout could not be loaded');
     mapLayout=await layoutResponse.json();
     const map=await loader.loadAsync('./Assets/Map/Models/demacian_citadel.glb?v=2');
@@ -689,6 +689,7 @@ function animate(){
     else if(!spell1Target&&cameraPov==='first')alignFirstPersonAttack();
     if(now>=lockUntil&&!spell1Target)play(runSpellActive()?'Run_Spell1':'Run_Base');
   }else if(now>=lockUntil&&!spell1Target)play('Idle1_Base');
+  player.position.y=groundHeight(player.position,mapLayout);
   updateTargets(dt);
   championNpcs?.update(dt,player,dancing,playerDanceId,PLAYER_RADIUS);
   if(mixer){
@@ -715,7 +716,7 @@ function animate(){
     // the near plane inside a target or wall when the champion is touching it.
     // Eye-level camera, slightly ahead of the face to avoid seeing inside the
     // champion's head while preserving the real animated torso, arms and sword.
-    camera.position.set(player.position.x+forward.x*.12,1.65,player.position.z+forward.z*.12);
+    camera.position.set(player.position.x+forward.x*.12,player.position.y+1.65,player.position.z+forward.z*.12);
     if(spell1Target&&current==='Spell1'){
       // First-person leap is visual only: keep player collision on the ground.
       // The camera rises before the 45% hit tick and lands with a short jolt.
@@ -882,15 +883,15 @@ function animate(){
     const orbit=new THREE.Vector3(Math.sin(cameraYaw)*radius*Math.cos(elevation),radius*Math.sin(elevation),Math.cos(cameraYaw)*radius*Math.cos(elevation));
     const goal=player.position.clone().add(orbit);
     camera.position.lerp(goal,Math.min(1,dt*3.4));
-    camera.lookAt(player.position.x,1.1,player.position.z);
+    camera.lookAt(player.position.x,player.position.y+1.1,player.position.z);
   }
   // Keep the shadow frustum around the player across the larger courtyard.
   sun.position.set(player.position.x-24,48,player.position.z+20);
-  sun.target.position.set(player.position.x,0,player.position.z);
+  sun.target.position.set(player.position.x,player.position.y,player.position.z);
   // Fade only architecture between camera and champion; collision stays solid.
   occlusionCheck-=dt;
   if(occlusionCheck<=0){
-    occlusionCheck=.1;cameraFocus.set(player.position.x,1.1,player.position.z);
+    occlusionCheck=.1;cameraFocus.set(player.position.x,player.position.y+1.1,player.position.z);
     const distance=camera.position.distanceTo(cameraFocus);
     cameraRay.set(camera.position,cameraFocus.sub(camera.position).normalize());cameraRay.far=distance-.5;
     for(const group of occlusionGroups.values())group.hidden=false;

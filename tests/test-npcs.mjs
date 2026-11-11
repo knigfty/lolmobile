@@ -51,7 +51,7 @@ for(const file of ['lux','jarvan_iv']){
   const gltf=JSON.parse(bytes.toString('utf8',20,20+bytes.readUInt32LE(12)));
   for(const name of ['Idle1','Idle2','Idle3','Idle4','Run','Joke','Dance','Laugh'])assert.ok(gltf.animations.some(a=>a.name===name),`${file} ${name}`);
 }
-console.log(`Passed: all 36 landmark routes, collision safety, actual GLB clips, 30%/50% boundaries, facing, encounter/dance debounce, wall occlusion, emote recovery, 20-minute roaming (${Math.round(idle/total*100)}% idle).`);
+console.log(`Passed: all 49 landmark routes, collision safety, actual GLB clips, 30%/50% boundaries, facing, encounter/dance debounce, wall occlusion, emote recovery, 20-minute roaming (${Math.round(idle/total*100)}% idle).`);
 
 // Solid bodies stop motion in either direction, including a swept large step.
 const {bodyPathClear,overlapsBody,separateBody}=await import('../scripts/npcs/body-collision.mjs');

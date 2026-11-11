@@ -39,3 +39,9 @@ Within 4 units and clear line of sight, a fresh approach rolls a 30% chance of J
 Run `node tests/test-npcs.mjs` for landmark connectivity, swept collision checks, reaction probabilities and encounter gating, facing, recovery, a long roaming simulation, and required clips in both GLBs.
 
 NPCs have solid 0.55-unit-radius bodies. Player movement projects out of these bodies using the same substeps and wall validation as dummy collisions. NPC movement checks swept circles against the player and other NPCs; after two seconds blocked, it replans around their current positions or chooses another landmark. NPCs remain non-combat characters.
+
+## Citadel spawns and walkable throne platform
+
+Lux starts at (-3, -21) and Jarvan IV at (3, -21), inside the citadel hall. Their destinations include the throne platform in front of the chair. The five existing stone treads are described by `walkable_surfaces` in the map layout; player and NPC feet follow the highest tread beneath them. Both camera modes follow player elevation. The chair and guardian statues remain solid, while the former whole-platform blocker is removed. The map generator exports the same collision and surface metadata on rebuild. Run `node tests/test-throne.mjs` to verify ascent/descent, chair collision, platform routes and agreement with the existing GLB tread heights.
+
+Changes are pushed directly to `main`, without feature branches or pull requests, per the project workflow in `AGENTS.md`.

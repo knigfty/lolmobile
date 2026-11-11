@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import {groundHeight} from '../../Assets/Map/citadel-collision.mjs';
 import {createNavigation,createRoamer,LANDMARKS,NPC_RADIUS} from './roaming.mjs';
 
 import {bodyPathClear} from './body-collision.mjs';
@@ -11,7 +12,7 @@ export async function loadChampionNpcs({loader,scene,layout,targets}){
   }))]};
   const navigation=createNavigation(navigationLayout);
   const bodies=[];let playerBody=null;
-  const definitions=[{name:'Lux',file:'lux.glb',start:3,headHeight:1.72},{name:'Jarvan IV',file:'jarvan_iv.glb',start:5,headHeight:1.9}];
+  const definitions=[{name:'Lux',file:'lux.glb',start:0,headHeight:1.72},{name:'Jarvan IV',file:'jarvan_iv.glb',start:1,headHeight:1.9}];
   const assets=await Promise.all(definitions.map(d=>loader.loadAsync(`./Assets/Champs/${d.file}`)));
   const npcs=assets.map((gltf,index)=>{
     const definition=definitions[index],model=gltf.scene,group=new THREE.Group();
@@ -64,7 +65,7 @@ export async function loadChampionNpcs({loader,scene,layout,targets}){
         ...blockers().map(b=>({type:'circle',x:b.group.position.x,z:b.group.position.z,radius:b.hitboxRadius+.1})),
       ]}).route(from,to),
     });
-    group.position.set(position.x,layout.ground_y??0,position.z);scene.add(group);
+    group.position.set(position.x,groundHeight(position,layout),position.z);scene.add(group);
     return {group,position,brain,mixer};
   });
   return {
@@ -74,6 +75,7 @@ export async function loadChampionNpcs({loader,scene,layout,targets}){
       for(const npc of npcs){
         npc.brain.update(dt,{player:player.position,dancing,danceId});
         npc.group.position.x=npc.position.x;npc.group.position.z=npc.position.z;
+        npc.group.position.y=groundHeight(npc.position,layout);
         npc.group.rotation.y=npc.position.heading;npc.mixer.update(dt);
       }
     },
