@@ -108,6 +108,8 @@ let attackHeldSince=0,runSpellHoldConsumed=false;
 let runSpellUntil=0,runSpellReadyAt=0,runSpellArmed=false;
 let spell1Target=null,spell1Until=0,spell1HitAt=0,spell1Hit=false,spell1StartedAt=0,pendingSpellCommand=null;
 const SPELL1_RANGE=3,SPELL1_CONE_COS=Math.cos(Math.PI/4);
+const BASE_ATTACK_RANGE=2.45;
+function meleeRange(baseRange){return baseRange*(cameraPov==='first'?1.2:1)}
 const inputTime=()=>performance.now()/1000;
 const runSpellActive=()=>runSpellArmed&&inputTime()<runSpellUntil;
 function movementInput(){
@@ -199,7 +201,7 @@ function updateRunSpell(){
   if(spell1Target){
     if(!spell1Hit&&time>=spell1HitAt){
       spell1Hit=true;
-      if(spell1Target.hp>0&&spell1Target.group.visible&&player.position.distanceTo(spell1Target.group.position)<=SPELL1_RANGE){damageTarget(spell1Target);garenAudio.spell1Hit()}
+      if(spell1Target.hp>0&&spell1Target.group.visible&&player.position.distanceTo(spell1Target.group.position)<=meleeRange(SPELL1_RANGE)){damageTarget(spell1Target);garenAudio.spell1Hit()}
     }
     if(time>=spell1Until){
       garenAudio.endSpell1();
@@ -219,7 +221,7 @@ function updateRunSpell(){
     if(t.hp<=0||!t.group.visible)continue;
     const dx=t.group.position.x-player.position.x,dz=t.group.position.z-player.position.z;
     const distance=Math.hypot(dx,dz);
-    if(distance>SPELL1_RANGE||distance<1e-6||distance>=nearestDistance)continue;
+    if(distance>meleeRange(SPELL1_RANGE)||distance<1e-6||distance>=nearestDistance)continue;
     if((dx*forward.x+dz*forward.z)/distance+1e-9<SPELL1_CONE_COS)continue;
     nearest=t;nearestDistance=distance;
   }
@@ -392,7 +394,7 @@ function action(name,duration,damage){
         const distance=Math.hypot(dx,dz);
         if(spinning)return distance<=3;
         const facing=distance<.01||(dx*forward.x+dz*forward.z)/distance>=BASE_ATTACK_CONE_COS;
-        return distance<2.45&&facing;
+        return distance<meleeRange(BASE_ATTACK_RANGE)&&facing;
       });
       for(const t of hits)damageTarget(t);
       if(hits.length&&name.startsWith('Attack'))garenAudio.hit(name);
@@ -535,7 +537,7 @@ async function loadFirstPersonSword(){
   root.traverse(o=>{if(o.isMesh){o.frustumCulled=false;o.castShadow=false}});
   firstPersonSword.add(root);
 }
-function start(gltf){const model=gltf.scene;model.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;o.frustumCulled=false;(Array.isArray(o.material)?o.material:[o.material]).forEach(material=>{material.side=THREE.DoubleSide})}});player.add(model);model.traverse(o=>{if(o.isSkinnedMesh)separateChampionSword(o)});updateChampionPovMeshes();mixer=new THREE.AnimationMixer(model);for(const clip of gltf.animations)actions[clip.name]=mixer.clipAction(clip);mixer.addEventListener('finished',e=>{
+function start(gltf){const model=gltf.scene;model.scale.setScalar(1.297);model.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true;o.frustumCulled=false;(Array.isArray(o.material)?o.material:[o.material]).forEach(material=>{material.side=THREE.DoubleSide})}});player.add(model);model.traverse(o=>{if(o.isSkinnedMesh)separateChampionSword(o)});updateChampionPovMeshes();mixer=new THREE.AnimationMixer(model);for(const clip of gltf.animations)actions[clip.name]=mixer.clipAction(clip);mixer.addEventListener('finished',e=>{
   if(dancing&&current==='Dance_Base'&&e.action===actions.Dance_Base){
     play('Dance_Loop_BASE',.12);
     garenAudio.danceLoop(()=>dancing&&current==='Dance_Loop_BASE');

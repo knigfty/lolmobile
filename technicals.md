@@ -43,7 +43,7 @@ The renderer uses antialiasing, a device-pixel-ratio cap of 2, soft shadows, sRG
 
 Startup loads the map layout (`?v=3`), map GLB (`?v=2`), target dummy, Lux and Jarvan, then the player. Retired `TrainingInlays` are removed from the map scene. NPC GLBs load in parallel; a failed required asset leaves an explanatory loading screen.
 
-`GLTFLoader` normally loads `./Assets/Champs/garen.glb`. There is also a fallback code path for a base64 GLB inside an element named `embedded-model`; that element is not included in the current page. On success, `start(gltf)` attaches the model, enables mesh shadows and double-sided materials, disables mesh frustum culling, and registers every animation clip with an `AnimationMixer`. It starts `Idle1_Base`, loads the separate first-person sword, then removes the loading overlay and begins `animate()`. The sword is required even if the initial POV is third person. On failure, `fail()` logs the error and leaves an explanatory loading screen.
+`GLTFLoader` normally loads `./Assets/Champs/garen.glb`. There is also a fallback code path for a base64 GLB inside an element named `embedded-model`; that element is not included in the current page. On success, `start(gltf)` attaches the model, enables mesh shadows and double-sided materials, disables mesh frustum culling, and registers every animation clip with an `AnimationMixer`. Garen's model receives a uniform **1.297×** runtime scale; the source GLB, collision radius and dedicated first-person sword size are unchanged. It starts `Idle1_Base`, loads the separate first-person sword, then removes the loading overlay and begins `animate()`. The sword is required even if the initial POV is third person. On failure, `fail()` logs the error and leaves an explanatory loading screen.
 
 Each animation frame:
 
@@ -140,15 +140,15 @@ Replacing the model requires preserving these names or updating all references. 
 
 Basic attacks alternate between `Attack1` and `Attack2`. Their playback speed is scaled to the configured attack duration: 1.5 seconds by default, otherwise the inverse of the configured attacks per second, capped at 2.5 attacks per second.
 
-Damage runs through a timeout at 17.55% of the attack duration. At that point, the code snapshots all living, visible targets within 2.45 units and a forward cone with a total angle of 135 degrees, then damages every matching target. Basic attacks can therefore hit multiple targets.
+Damage runs through a timeout at 17.55% of the attack duration. At that point, the code snapshots all living, visible targets within 2.45 units in third person or **2.94 units in first person** and a forward cone with a total angle of 135 degrees, then damages every matching target. Basic attacks can therefore hit multiple targets.
 
 Another attack can be buffered after half the active attack's recovery window. Holding movement when an attack begins queues movement and shortens recovery to half its normal duration; a fresh movement command cancels an active attack immediately and clears its pending damage timer. The next attack still respects `attackReadyAt`.
 
 ### Run spell and empowered strike
 
-Holding attack for at least 120 ms while moving attempts to arm the run spell once the current action permits it. The boost lasts 2.5 seconds and multiplies movement speed by 1.35. While armed, the code automatically finds the nearest living target within 3 units and a 90-degree forward cone, faces it, and plays `Spell1`.
+Holding attack for at least 120 ms while moving attempts to arm the run spell once the current action permits it. The boost lasts 2.5 seconds and multiplies movement speed by 1.35. While armed, the code automatically finds the nearest living target within 3 units in third person or **3.6 units in first person** and a 90-degree forward cone, faces it, and plays `Spell1`.
 
-The empowered strike applies one damage at 45% of the clip duration if the target remains within range. Movement is allowed during this strike, with its speed multiplier decreasing from 1 to 0.2 across the strike window. Queued commands can shorten recovery to 0.2 seconds before the clip's normal end. The eight-second cooldown begins when the strike ends, or when the unused boost expires.
+The empowered strike applies one damage at 45% of the clip duration if the target remains within range. Both acquisition and impact validation use `meleeRange(SPELL1_RANGE)`, so the first-person 20% increase applies consistently. `meleeRange` reads the current POV; third-person ranges, cones, damage and other abilities are unchanged. Movement is allowed during this strike, with its speed multiplier decreasing from 1 to 0.2 across the strike window. Queued commands can shorten recovery to 0.2 seconds before the clip's normal end. The eight-second cooldown begins when the strike ends, or when the unused boost expires.
 
 ### Spin
 
