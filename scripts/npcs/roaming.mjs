@@ -1,6 +1,7 @@
 import {containsPosition} from '../../Assets/Map/citadel-collision.mjs';
 
 export const NPC_RADIUS=.55;
+export const NPC_INTERACTION_RANGE=7;
 export const NPC_SPEED=4.5; // Match normal player travel; Run plays at native speed.
 // Deliberate stops on the existing map, not random coordinates. The hall stops
 // are inside the citadel; fountains and training stops are beside their props.
@@ -98,7 +99,7 @@ export function createRoamer({position,navigation,play,random=Math.random,startI
     get state(){return state},get activity(){return {elapsed,movingTime}},get destination(){return LANDMARKS[destination].name},
     update(dt,{player,dancing=false,danceId=0}){
       elapsed+=dt;
-      const d=distance(position,player),visible=d<=7&&navigation.clear(position,player,.05);
+      const d=distance(position,player),visible=d<NPC_INTERACTION_RANGE&&navigation.clear(position,player,.05);
       const entered=!near&&d<=4&&visible;
       if(d>6)near=false;
       if(entered)near=true;
@@ -107,6 +108,8 @@ export function createRoamer({position,navigation,play,random=Math.random,startI
       if(dancing&&danceId!==lastDance&&visible){lastDance=danceId;react(random()<.5?'Dance':'Laugh',player)}
       else if(entered&&state!=='react'&&random()<.3)react('Joke',player);
       if(state==='react'){
+        // Stop the reaction as soon as the player leaves range or sight.
+        if(!visible){idle();return}
         remaining-=dt;if(remaining<=0)idle();return;
       }
       if(state==='idle'){

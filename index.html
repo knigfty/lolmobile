@@ -484,8 +484,8 @@ addEventListener('keydown',e=>{
   if(controlMatches('justice',e.code))justice();
 });
 addEventListener('keyup',e=>{keys.delete(e.code);if(controlMatches('attack',e.code)){e.preventDefault();endAttack()}});
-addEventListener('blur',()=>{garenAudio.stop();endAttack(true);attackPointerId=null;keys.clear();stickX=stickY=0;stick.style.transform='translate(-50%,-50%)'});
-document.addEventListener('visibilitychange',()=>{if(document.hidden)garenAudio.stop()});
+addEventListener('blur',()=>{garenAudio.stop();championNpcs?.stopAudio();endAttack(true);attackPointerId=null;keys.clear();stickX=stickY=0;stick.style.transform='translate(-50%,-50%)'});
+document.addEventListener('visibilitychange',()=>{if(document.hidden){garenAudio.stop();championNpcs?.stopAudio()}});
 // The source GLB contains one skinned mesh: isolate its detached T-pose sword
 // by rest-pose vertex coordinates, keeping the original texture/material.
 const firstPersonSword=new THREE.Group();camera.add(firstPersonSword);scene.add(camera);

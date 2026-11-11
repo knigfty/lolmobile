@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import {groundHeight} from '../../Assets/Map/citadel-collision.mjs';
-import {createNavigation,createRoamer,LANDMARKS,NPC_RADIUS} from './roaming.mjs';
+import {createNavigation,createRoamer,LANDMARKS,NPC_RADIUS,NPC_INTERACTION_RANGE} from './roaming.mjs';
+
+import {createNpcAudio} from '../audio/npc-audio.mjs';
 
 import {bodyPathClear} from './body-collision.mjs';
 
@@ -45,10 +47,12 @@ export async function loadChampionNpcs({loader,scene,layout,targets}){
       if(!actions.has(name))throw new Error(`${definition.name}: missing ${name} animation`);
     }
     const start=LANDMARKS[definition.start],position={x:start.x,z:start.z,heading:0};
+    const audio=createNpcAudio({champion:definition.name});
     let current=null;
     function play(name,once=false){
       const action=actions.get(name),speed=1;
       if(action!==current){
+        audio.endEmote();audio.emote(name);
         action.reset().setLoop(once?THREE.LoopOnce:THREE.LoopRepeat,once?1:Infinity);
         action.clampWhenFinished=once;action.setEffectiveTimeScale(speed).setEffectiveWeight(1).play();
         if(current)action.crossFadeFrom(current,.25,false);
@@ -66,14 +70,21 @@ export async function loadChampionNpcs({loader,scene,layout,targets}){
       ]}).route(from,to),
     });
     group.position.set(position.x,groundHeight(position,layout),position.z);scene.add(group);
-    return {group,position,brain,mixer};
+    return {group,position,brain,mixer,audio};
   });
   return {
     bodies,
+    stopAudio(){for(const npc of npcs)npc.audio.stop()},
     update(dt,player,dancing,danceId,playerRadius=.4){
       playerBody={group:player,hitboxRadius:playerRadius};
       for(const npc of npcs){
+        const distance=Math.hypot(npc.position.x-player.position.x,npc.position.z-player.position.z);
+        npc.audio.update({distance,audible:distance<NPC_INTERACTION_RANGE&&navigation.clear(npc.position,player.position,.05),
+          enabled:!document.hidden&&document.hasFocus()&&navigator.userActivation?.hasBeenActive!==false,playerChampion:'Garen'});
+        const previousX=npc.position.x,previousZ=npc.position.z;
         npc.brain.update(dt,{player:player.position,dancing,danceId});
+        // Only actual travel triggers movement VO, never blocked Run attempts.
+        if(npc.position.x!==previousX||npc.position.z!==previousZ)npc.audio.move();
         npc.group.position.x=npc.position.x;npc.group.position.z=npc.position.z;
         npc.group.position.y=groundHeight(npc.position,layout);
         npc.group.rotation.y=npc.position.heading;npc.mixer.update(dt);
