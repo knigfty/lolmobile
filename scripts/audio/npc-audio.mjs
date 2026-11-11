@@ -42,7 +42,19 @@ export function createNpcAudio({champion,AudioClass=globalThis.Audio,time=()=>pe
       if(name!=='Joke'&&name!=='Laugh')return false; // No dance sound in either base-skin pack.
       return play(variant(`Taunt_Joke/${name}_General`,name==='Joke'?2:4),'emote',2);
     },
+    get emotePlayback(){return active?.category==='emote'?active.audio:null},
+    dance(){
+      if(volume<=0||time()<ready.emote||(active&&active.rank>=2))return false;
+      stop();ready.emote=time()+NPC_AUDIO_COOLDOWNS.emote;return true;
+    },
     endEmote(){if(active?.category==='emote')stop()},
     stop,
   };
+}
+
+// Pause on the first pose until metadata arrives; follow the media clock even
+// during buffering. The animation therefore never runs ahead of the recording.
+export function syncEmoteAnimation(action,media){
+  action.time=Number.isFinite(media?.duration)&&media.duration>0
+    ?Math.min(1,Math.max(0,media.currentTime/media.duration))*action.getClip().duration:0;
 }

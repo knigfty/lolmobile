@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {existsSync} from 'node:fs';
-import {createNpcAudio} from '../scripts/audio/npc-audio.mjs';
+import {createNpcAudio,syncEmoteAnimation} from '../scripts/audio/npc-audio.mjs';
 import {createRoamer} from '../scripts/npcs/roaming.mjs';
 let now=0;const played=[];
 class MockAudio{
@@ -57,3 +57,28 @@ for(const roll of [.1,.8]){
   visible=false;b.update(.1,{player:{x:2,z:0}});assert.equal(b.state,'idle');
 }
 console.log('Passed: NPC asset variants, exact cooldown boundaries, shared joke/laugh timer, independent champions, Garen-only encounters, range/visibility cancellation, volume falloff, priority and autoplay failure.');
+
+// Animation and voice share the exact same gate, including silent dances.
+now+=1000;const synced=make('Jarvan IV');synced.update(close);
+assert.equal(synced.emote('Joke'),true);assert.equal(synced.emotePlayback,played.at(-1));
+assert.equal(synced.dance(),false);finish();assert.equal(synced.emotePlayback,null);
+now+=14.999;assert.equal(synced.emote('Laugh'),false);assert.equal(synced.dance(),false);
+now+=.001;assert.equal(synced.dance(),true);assert.equal(synced.emote('Laugh'),false);
+const action={time:0,getClip:()=>({duration:2})};
+for(const duration of [1,8]){
+  syncEmoteAnimation(action,{duration,currentTime:duration/2});assert.equal(action.time,1);
+  syncEmoteAnimation(action,{duration,currentTime:duration});assert.equal(action.time,2);
+}
+syncEmoteAnimation(action,{duration:NaN,currentTime:0});assert.equal(action.time,0);
+// A short GLB clip stays active for a longer voice, then exits on audio end.
+let voiceActive=true;const pos={x:0,z:0,heading:Math.PI-.1};
+const brain=createRoamer({position:pos,navigation:{clear:()=>true,route:()=>[]},random:()=>.1,
+  play:()=>1,reactionActive:()=>voiceActive});
+const nearby={x:-.2,z:-2};brain.update(.1,{player:nearby});
+assert.ok(pos.heading>Math.PI-.1,'turn uses short path across pi boundary');
+for(let i=0;i<30;i++)brain.update(.1,{player:nearby});assert.equal(brain.state,'react');
+voiceActive=false;brain.update(.1,{player:nearby});assert.equal(brain.state,'idle');
+const denied=createRoamer({position:{x:0,z:0,heading:0},navigation:{clear:()=>true,route:()=>[]},
+  random:()=>.1,play:name=>name==='Joke'||name==='Laugh'||name==='Dance'?0:2});
+denied.update(.1,{player:{x:2,z:0}});assert.equal(denied.state,'idle','denied audio cannot start animation');
+console.log('Passed: shared animation/audio cooldown gate, media duration retiming, metadata wait, long audio completion and smooth shortest-path turns.');

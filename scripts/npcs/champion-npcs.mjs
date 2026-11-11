@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import {groundHeight} from '../../Assets/Map/citadel-collision.mjs';
 import {createNavigation,createRoamer,LANDMARKS,NPC_RADIUS,NPC_INTERACTION_RANGE} from './roaming.mjs';
 
-import {createNpcAudio} from '../audio/npc-audio.mjs';
+import {createNpcAudio,syncEmoteAnimation} from '../audio/npc-audio.mjs';
 
 import {bodyPathClear} from './body-collision.mjs';
 
@@ -48,29 +48,40 @@ export async function loadChampionNpcs({loader,scene,layout,targets}){
     }
     const start=LANDMARKS[definition.start],position={x:start.x,z:start.z,heading:0};
     const audio=createNpcAudio({champion:definition.name});
-    let current=null;
+    let current=null,syncedEmote=false;
     function play(name,once=false){
       const action=actions.get(name),speed=1;
-      if(action!==current){
-        audio.endEmote();audio.emote(name);
+      if(action!==current||once){
+        const voiced=name==='Joke'||name==='Laugh';
+        if(voiced&&!audio.emote(name))return 0;
+        if(name==='Dance'&&!audio.dance())return 0;
+        if(!voiced)audio.endEmote();
+        syncedEmote=voiced;
         action.reset().setLoop(once?THREE.LoopOnce:THREE.LoopRepeat,once?1:Infinity);
-        action.clampWhenFinished=once;action.setEffectiveTimeScale(speed).setEffectiveWeight(1).play();
+        action.clampWhenFinished=once;action.setEffectiveTimeScale(syncedEmote?0:speed).setEffectiveWeight(1).play();
         if(current)action.crossFadeFrom(current,.25,false);
         current=action;
       }
-      group.rotation.y=position.heading;
       return action.getClip().duration/speed;
     }
     const body={group,hitboxRadius:NPC_RADIUS};bodies.push(body);
     const blockers=()=>[...bodies.filter(other=>other!==body),...(playerBody?[playerBody]:[])];
     const brain=createRoamer({position,navigation,play,startIndex:definition.start,
+      reactionActive:()=>syncedEmote?Boolean(audio.emotePlayback):null,
       canMove:(from,to)=>bodyPathClear(from,to,NPC_RADIUS,blockers()),
       replan:(from,to)=>createNavigation({...navigationLayout,obstacles:[...navigationLayout.obstacles,
         ...blockers().map(b=>({type:'circle',x:b.group.position.x,z:b.group.position.z,radius:b.hitboxRadius+.1})),
       ]}).route(from,to),
     });
     group.position.set(position.x,groundHeight(position,layout),position.z);scene.add(group);
-    return {group,position,brain,mixer,audio};
+    function updateAnimation(dt){
+      // The media clock owns voiced emotes, including buffering and late metadata.
+      // Stretch one animation cycle over the chosen recording's actual duration.
+      const media=audio.emotePlayback;
+      if(syncedEmote)syncEmoteAnimation(current,media);
+      mixer.update(dt);
+    }
+    return {group,position,brain,mixer,audio,updateAnimation};
   });
   return {
     bodies,
@@ -87,7 +98,7 @@ export async function loadChampionNpcs({loader,scene,layout,targets}){
         if(npc.position.x!==previousX||npc.position.z!==previousZ)npc.audio.move();
         npc.group.position.x=npc.position.x;npc.group.position.z=npc.position.z;
         npc.group.position.y=groundHeight(npc.position,layout);
-        npc.group.rotation.y=npc.position.heading;npc.mixer.update(dt);
+        npc.group.rotation.y=npc.position.heading;npc.updateAnimation(dt);
       }
     },
   };

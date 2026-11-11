@@ -19,14 +19,15 @@ function actor(roll=.2,position={x:0,z:8,heading:0},navigation=nav){
   return {brain,position,calls,get rolls(){return rolls},tick:(player,options={})=>brain.update(.1,{player,...options})};
 }
 let a=actor();const player={x:3,z:8};a.tick(player);
-assert.equal(a.calls.at(-1).name,'Joke');assert.equal(a.calls.at(-1).heading,Math.PI/2,'faces player before play');
+assert.equal(a.calls.at(-1).name,'Joke');assert.equal(a.calls.at(-1).heading,0,'does not snap before playing');
+assert.ok(a.position.heading>0&&a.position.heading<Math.PI/2,'turn eases toward player');
 const rolled=a.rolls;for(let i=0;i<10;i++)a.tick(player);assert.equal(a.rolls,rolled,'no repeated proximity rolls');
 a=actor(.3);a.tick(player);assert.equal(a.brain.state,'idle','30% boundary excludes .3');
 const failureRolls=a.rolls;for(let i=0;i<10;i++)a.tick(player);assert.equal(a.rolls,failureRolls,'failed chance does not reroll');
 a.tick(remote);a.tick(player);assert.equal(a.rolls,failureRolls+1,'new approach rolls again');
 for(const [roll,expected] of [[.49,'Dance'],[.5,'Laugh']]){
   a=actor(roll);a.tick(player,{dancing:true,danceId:1});assert.equal(a.calls.at(-1).name,expected);
-  assert.equal(a.calls.at(-1).heading,Math.PI/2);const count=a.calls.filter(c=>c.name===expected).length;
+  assert.ok(a.position.heading>0&&a.position.heading<Math.PI/2);const count=a.calls.filter(c=>c.name===expected).length;
   for(let i=0;i<100;i++)a.tick(player,{dancing:true,danceId:1});
   assert.equal(a.calls.filter(c=>c.name===expected).length,count,'once per performance');
   a.tick({x:a.position.x+3,z:a.position.z},{dancing:true,danceId:2});assert.equal(a.calls.filter(c=>c.name===expected).length,count+1);
@@ -36,7 +37,7 @@ assert.equal(a.brain.state,'idle','no emotes through the hall wall');
 // Reactions pause movement and return to idling before the next journey.
 a=actor();for(let i=0;i<81;i++)a.brain.update(.05,{player:remote});assert.equal(a.brain.state,'walk');
 const close={x:a.position.x+2,z:a.position.z};a.tick(close);assert.equal(a.brain.state,'react');
-const saved={...a.position};for(let i=0;i<10;i++)a.tick(close);assert.deepEqual(a.position,saved);
+const saved={...a.position};for(let i=0;i<10;i++)a.tick(close);assert.equal(a.position.x,saved.x);assert.equal(a.position.z,saved.z);
 for(let i=0;i<15;i++)a.tick(close);assert.notEqual(a.brain.state,'react');
 // Long simulation: every step stays walkable; only landmark stops; mostly idle.
 a=actor(.6);let idle=0,total=0;const visited=new Set();

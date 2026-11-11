@@ -84,15 +84,15 @@ export function createNavigation(layout,radius=NPC_RADIUS){
   return {clear,route};
 }
 
-export function createRoamer({position,navigation,play,random=Math.random,startIndex=2,canMove=()=>true,replan=null}){
+export function createRoamer({position,navigation,play,random=Math.random,startIndex=2,canMove=()=>true,replan=null,reactionActive=()=>null}){
   let state='idle',remaining=0,idleChange=0,idleIndex=0,near=false,lastDance=0,route=[],destination=startIndex,visits=[];
   let elapsed=0,movingTime=0,blocked=0;
   const choose=items=>items[Math.floor(random()*items.length)];
   function idle(){state='idle';remaining=elapsed===0?4:Math.max(0,movingTime/.3-elapsed);idleChange=play(`Idle${idleIndex%4+1}`);idleIndex++}
   function react(name,player){
-    // Face immediately BEFORE starting the emote, including reactions mid-walk.
-    position.heading=Math.atan2(player.x-position.x,player.z-position.z);
-    state='react';remaining=play(name,true);route=[];
+    // A denied audio/cooldown request must not start a silent animation.
+    const duration=play(name,true);if(!duration)return;
+    state='react';remaining=duration;route=[];
   }
   idle();
   return {
@@ -110,7 +110,12 @@ export function createRoamer({position,navigation,play,random=Math.random,startI
       if(state==='react'){
         // Stop the reaction as soon as the player leaves range or sight.
         if(!visible){idle();return}
-        remaining-=dt;if(remaining<=0)idle();return;
+        const desired=Math.atan2(player.x-position.x,player.z-position.z);
+        const delta=Math.atan2(Math.sin(desired-position.heading),Math.cos(desired-position.heading));
+        // Frame-rate-independent easing along the shortest angular path.
+        position.heading+=delta*(1-Math.exp(-6*dt));
+        const active=reactionActive();
+        remaining-=dt;if(active===false||(active===null&&remaining<=0))idle();return;
       }
       if(state==='idle'){
         remaining-=dt;idleChange-=dt;
