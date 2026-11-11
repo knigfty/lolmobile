@@ -547,7 +547,7 @@ function start(gltf){const model=gltf.scene;model.scale.setScalar(1.297);model.t
 const cameraOccluders=[],occlusionGroups=new Map(),cameraRay=new THREE.Raycaster();
 const cameraFocus=new THREE.Vector3();let occlusionCheck=0;
 let cameraDistance=14*Math.sqrt(1+.72*.72); // Actual third-person orbit radius in world units.
-const MIN_CAMERA_DISTANCE=2.5,MAX_CAMERA_DISTANCE=300;
+const MIN_CAMERA_DISTANCE=2.5,MAX_CAMERA_DISTANCE=24;
 
 function loadPov(){try{return localStorage.getItem('garen.pov')==='first'?'first':'third'}catch{return 'third'}}
 let cameraPov=loadPov();
@@ -709,7 +709,7 @@ function animate(){
   updateLook(dt);
   if(cameraPov==='first')alignFirstPersonAttack();
   const aspect=innerWidth/innerHeight;
-  // Zoom distance is independent of champion size and never exceeds 300 units.
+  // Zoom distance is independent of champion size and never exceeds 24 units.
   if(cameraPov==='first'){
     // Positive horizontal drag looks right; upward drag raises the view.
     const yaw=Math.PI-cameraYaw;
@@ -879,7 +879,7 @@ function animate(){
     updateChampionPovMeshes();
     player.visible=true;
     // Orbit on a fixed-radius sphere: vertical dragging changes elevation, never zoom.
-    // Only wheel scrolling or a two-finger pinch changes cameraZoom.
+    // Only wheel scrolling or a two-finger pinch changes cameraDistance.
     const elevation=THREE.MathUtils.clamp(Math.atan(.72)-cameraPitch,.03,Math.PI/3);
     const radius=cameraDistance;
     const orbit=new THREE.Vector3(Math.sin(cameraYaw)*radius*Math.cos(elevation),radius*Math.sin(elevation),Math.cos(cameraYaw)*radius*Math.cos(elevation));
